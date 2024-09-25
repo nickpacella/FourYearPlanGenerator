@@ -1,17 +1,21 @@
 import { ClerkProvider, SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
 import './globals.css'
+import Link from 'next/link'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
       <html lang="en">
         <body>
-          <header>
+          <header className="flex justify-between items-center p-4">
             <SignedOut>
               <SignInButton />
             </SignedOut>
             <SignedIn>
-              <UserButton />
+              <div className="flex items-center space-x-4">
+                <Link href="/home">Home</Link>
+                <UserButton afterSignOutUrl="/" />
+              </div>
             </SignedIn>
           </header>
           <main>{children}</main>
