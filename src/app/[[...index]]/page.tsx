@@ -8,10 +8,33 @@ export default function Home() {
   const { isLoaded, userId } = useAuth();
   const router = useRouter();
 
+  // Function to add user to the database
+  const addUserToDatabase = async () => {
+    try {
+      const response = await fetch('/api/addUser', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        console.log('User added to database');
+      } else {
+        console.error('Failed to add user to database');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
   // Redirect if the user is signed in
   useEffect(() => {
     if (isLoaded && userId) {
-      router.push('/home');
+      // First, add the user to the database, then redirect
+      addUserToDatabase().then(() => {
+        router.push('/home');
+      });
     }
   }, [isLoaded, userId, router]);
 
