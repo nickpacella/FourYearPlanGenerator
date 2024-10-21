@@ -18,6 +18,9 @@ type Schedule = {
 export default function NewSchedulePage() {
   const [schedule, setSchedule] = useState<Schedule | null>(null); // Schedule can be of type Schedule or null
   const [isSaved, setIsSaved] = useState(false); // State to track save status
+  const [major, setMajor] = useState<string>(''); // State for the selected major
+  const [minor, setMinor] = useState<string>(''); // State for the selected minor
+  const [electives, setElectives] = useState<string[]>([]); // State for selected electives
   const searchParams = useSearchParams(); // Get query params
   const scheduleId = searchParams.get('id'); // Get the schedule ID from the URL
 
@@ -25,13 +28,25 @@ export default function NewSchedulePage() {
     return '_' + Math.random().toString(36).substr(2, 9);
   }
 
-  // Fetch the schedule if an ID is present in the URL
+  // Fetch the schedule if an ID is present in the URL and prepopulate dropdowns
   useEffect(() => {
     if (scheduleId) {
       const fetchSchedule = async () => {
-        const response = await fetch(`/api/getSchedule?id=${scheduleId}`);
-        const data = await response.json();
-        setSchedule(data.schedule); // Store the fetched schedule
+        try {
+          const response = await fetch(`/api/getSchedule?id=${scheduleId}`);
+          const data = await response.json();
+
+          const fetchedSchedule = data.schedule;
+
+          if (fetchedSchedule) {
+            setSchedule(fetchedSchedule);
+            setMajor(fetchedSchedule.schedule.major);
+            setMinor(fetchedSchedule.schedule.minor);
+            setElectives(fetchedSchedule.schedule.electives);
+          }
+        } catch (error) {
+          console.error('Error fetching schedule:', error);
+        }
       };
       fetchSchedule();
     }
@@ -40,18 +55,19 @@ export default function NewSchedulePage() {
   // Function to handle saving the schedule
   const handleSaveSchedule = async () => {
     const scheduleName = prompt("Enter a name for your schedule:");
-    if (!scheduleName) {
-      return; // User canceled
+    if (!scheduleName || !major || !minor || electives.length === 0) {
+      alert('Please ensure all fields are filled before saving.');
+      return;
     }
 
-    const mockSchedule = {
-      id: generateRandomId(),
+    const scheduleToSave = {
+      id: scheduleId ? scheduleId : generateRandomId(), // Use the existing id if editing, otherwise generate new
       name: scheduleName, // Save the entered name
       schedule: {
-        major: "Computer Science",
-        minor: "Math",
-        electives: ["Elective1", "Elective2"]
-      }
+        major, // Save the selected major
+        minor, // Save the selected minor
+        electives, // Save the selected electives
+      },
     };
 
     try {
@@ -60,7 +76,7 @@ export default function NewSchedulePage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(mockSchedule), // Send schedule with name and ID
+        body: JSON.stringify(scheduleToSave), // Send the schedule with the selected values
       });
 
       if (response.ok) {
@@ -82,8 +98,15 @@ export default function NewSchedulePage() {
       </p>
       <p className="mt-4 text-gray-500">Start building your four-year plan here!</p>
 
-      {/* Render ClientPlan */}
-      <ClientPlan />
+      {/* Render ClientPlan and pass the state setters and current values */}
+      <ClientPlan
+        setMajor={setMajor}
+        setMinor={setMinor}
+        setElectives={setElectives}
+        major={major}
+        minor={minor}
+        electives={electives}
+      />
 
       {/* Save Button */}
       <button

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { auth } from '@clerk/nextjs/server';
-
+;
 export async function POST(request: Request) {
   try {
     const { userId } = auth(); // get the user's Clerk ID

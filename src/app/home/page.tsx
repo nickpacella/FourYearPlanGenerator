@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation'; // Import the router for navigation
-import Link from 'next/link'; // Make sure Link is imported
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 type Schedule = {
   id: string;
@@ -14,22 +14,25 @@ type Schedule = {
 };
 
 export default function HomePage() {
-  const [schedules, setSchedules] = useState<Schedule[]>([]); // Explicitly typing the schedules array
-  const router = useRouter(); // Use Next.js router for navigation
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchSchedules = async () => {
-      const response = await fetch('/api/getSchedules'); // API to fetch schedules
-      const data = await response.json();
-      setSchedules(data.schedules);
+      try {
+        const response = await fetch('/api/getSchedules');
+        const data = await response.json();
+        setSchedules(data.schedules);
+      } catch (error) {
+        console.error('Error fetching schedules:', error);
+      }
     };
 
     fetchSchedules();
   }, []);
 
-  // Function to handle navigation when a schedule is clicked
   const openSchedule = (scheduleId: string) => {
-    router.push(`/schedule/new?id=${scheduleId}`); // Use template literal for navigation
+    router.push(`/schedule/new?id=${scheduleId}`);
   };
 
   return (
@@ -41,10 +44,12 @@ export default function HomePage() {
           <div
             key={schedule.id}
             className="bg-white rounded-lg shadow-lg p-6 cursor-pointer hover:bg-gray-100 transition"
-            onClick={() => openSchedule(schedule.id)} // Call function to open the schedule
+            onClick={() => openSchedule(schedule.id)}
           >
-            <h2 className="text-2xl font-bold text-indigo-500 mb-4">ID: {schedule.id}</h2>
-            <p className="text-gray-600">Schedule Name: {schedule.name}</p>
+            <h2 className="text-2xl font-bold text-indigo-500 mb-4">{schedule.name}</h2>
+            <p className="text-gray-600">Major: {schedule.schedule.major}</p>
+            <p className="text-gray-600">Minor: {schedule.schedule.minor}</p>
+            <p className="text-gray-600">Electives: {schedule.schedule.electives.join(', ')}</p>
           </div>
         ))}
       </div>
