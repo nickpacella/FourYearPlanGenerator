@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation'; // To get the ID from URL
+import ClientPlan from '../../components/ClientPlan'; // Keep ClientPlan
 
 // Define the Schedule type
 type Schedule = {
@@ -75,40 +76,28 @@ export default function NewSchedulePage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
-      {schedule ? (
-        // Display the fetched schedule JSON
-        <div>
-          <h1 className="text-4xl font-extrabold text-indigo-600 mb-4">
-            Schedule: {schedule.name}
-          </h1>
-          <pre className="bg-gray-200 p-4 rounded-lg text-left">
-            {JSON.stringify(schedule, null, 2)} {/* Pretty print the schedule JSON */}
-          </pre>
-        </div>
-      ) : (
-        // Default view when no schedule is selected (new schedule creation)
-        <>
-          <h1 className="text-4xl font-extrabold text-indigo-600 mb-4">Create a New Schedule</h1>
-          <p className="text-lg text-gray-700">
-            This is where your new schedule will be displayed and managed.
-          </p>
-          <p className="mt-4 text-gray-500">Start building your four-year plan here!</p>
+      <h1 className="text-4xl font-extrabold text-indigo-600 mb-4">Create a New Schedule</h1>
+      <p className="text-lg text-gray-700">
+        This is where your new schedule will be displayed and managed.
+      </p>
+      <p className="mt-4 text-gray-500">Start building your four-year plan here!</p>
 
-          {/* Save Button */}
-          <button
-            onClick={handleSaveSchedule}
-            className="mt-6 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-500 transition"
-          >
-            Save Schedule
-          </button>
+      {/* Render ClientPlan */}
+      <ClientPlan />
 
-          {/* Conditional Message */}
-          {isSaved && (
-            <p className="mt-4 text-green-700 font-medium">
-              Schedule has been saved successfully!
-            </p>
-          )}
-        </>
+      {/* Save Button */}
+      <button
+        onClick={handleSaveSchedule}
+        className="mt-6 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-500 transition"
+      >
+        Save Schedule
+      </button>
+
+      {/* Conditional Message */}
+      {isSaved && (
+        <p className="mt-4 text-green-700 font-medium">
+          Schedule has been saved successfully!
+        </p>
       )}
     </div>
   );
