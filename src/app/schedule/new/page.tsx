@@ -1,6 +1,8 @@
 "use client"; // Ensure this page runs as a Client Component
 
 import React, { useState } from 'react';
+import ClientPlan from '../../components/ClientPlan';
+
 
 export default function NewSchedulePage() {
   const [isSaved, setIsSaved] = useState(false); // State to track save status
@@ -18,6 +20,9 @@ export default function NewSchedulePage() {
         This is where your new schedule will be displayed and managed.
       </p>
       <p className="mt-4 text-gray-500">Start building your four-year plan here!</p>
+
+      
+      <ClientPlan />
 
       {/* Save Button */}
       <button
