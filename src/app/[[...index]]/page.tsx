@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
-import { SignedIn, SignedOut, SignIn } from '@clerk/nextjs';
+import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
 
 export default function Home() {
   const { isLoaded, userId } = useAuth();
@@ -31,7 +31,6 @@ export default function Home() {
   // Redirect if the user is signed in
   useEffect(() => {
     if (isLoaded && userId) {
-      // First, add the user to the database, then redirect
       addUserToDatabase().then(() => {
         router.push('/home');
       });
@@ -41,17 +40,21 @@ export default function Home() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50 p-6">
       <SignedOut>
-        <div className="flex flex-col items-center text-center bg-white shadow-lg p-10 rounded-lg">
-          <h1 className="text-4xl font-extrabold text-indigo-600 mb-6">Welcome Back!</h1>
-          <p className="text-lg text-gray-700 mb-4">
-            Please sign in to access your schedule.
+        <div className="flex flex-col items-center justify-center h-full text-center bg-white shadow-lg p-10 rounded-lg">
+          <h1 className="text-6xl font-extrabold text-indigo-600 mb-8 leading-relaxed">Welcome to the <br /> Four Year Plan Generator!</h1>
+          <p className="text-3xl text-gray-700 mb-4">
+            Please sign in to access your four-year plans.
           </p>
-          <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
+          <SignInButton>
+            <button className="mt-4 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700">
+              Sign In
+            </button>
+          </SignInButton>
         </div>
       </SignedOut>
 
       <SignedIn>
-        <h1 className="text-4xl font-extrabold text-green-600">You are signed in!</h1>
+        <h1 className="text-4xl font-extrabold text-green-600">Welcome back</h1>
       </SignedIn>
     </div>
   );

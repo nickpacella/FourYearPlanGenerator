@@ -8,9 +8,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <html lang="en">
         <body>
           <header className="flex justify-between items-center p-4">
-            <SignedOut>
-              <SignInButton />
-            </SignedOut>
             <SignedIn>
               <div className="flex items-center space-x-4">
                 <Link href="/home">Home</Link>

@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 
 type Schedule = {
@@ -15,7 +16,17 @@ type Schedule = {
 
 export default function HomePage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [name, setName] = useState<string>('User');
   const router = useRouter();
+  const { isSignedIn, userId } = useAuth();
+  const { user } = useUser();
+
+  useEffect(() => {
+    if (user) {
+      const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      setName(fullName || 'User');
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchSchedules = async () => {
@@ -37,7 +48,12 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
-      <h1 className="text-4xl font-extrabold text-indigo-600 mb-8">Your Saved Schedules</h1>
+      <h1 className="text-5xl font-extrabold text-indigo-600 mb-2 leading-relaxed">
+        {isSignedIn ? `Welcome back, ${name}!` : 'Welcome!'}
+      </h1>
+      <p className="text-3xl text-gray-700 mb-8">
+        View your saved plans
+      </p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
         {schedules.map((schedule) => (
@@ -49,7 +65,9 @@ export default function HomePage() {
             <h2 className="text-2xl font-bold text-indigo-500 mb-4">{schedule.name}</h2>
             <p className="text-gray-600">Major: {schedule.schedule.major}</p>
             <p className="text-gray-600">Minor: {schedule.schedule.minor}</p>
-            <p className="text-gray-600">Electives: {schedule.schedule.electives.join(', ')}</p>
+            <p className="text-gray-600">
+              Electives: {schedule.schedule.electives.join(', ')}
+            </p>
           </div>
         ))}
       </div>
