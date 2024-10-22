@@ -27,7 +27,6 @@ export default function NewSchedulePage() {
   function generateRandomId() {
     return `_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   }
-  
 
   // Fetch the schedule if an ID is present in the URL and prepopulate dropdowns
   useEffect(() => {
@@ -53,7 +52,7 @@ export default function NewSchedulePage() {
     }
   }, [scheduleId]);
 
-  // Function to handle saving the schedule
+  // Function to handle saving the schedule (new schedule, not updating)
   const handleSaveSchedule = async () => {
     const scheduleName = prompt("Enter a name for your schedule:");
     if (!scheduleName || !major || !minor || electives.length === 0) {
@@ -93,7 +92,9 @@ export default function NewSchedulePage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
-      <h1 className="text-4xl font-extrabold text-indigo-600 mb-4">Create a New Schedule</h1>
+      <h1 className="text-4xl font-extrabold text-indigo-600 mb-4">
+        {scheduleId ? 'Update Schedule' : 'Create a New Schedule'}
+      </h1>
       <p className="text-lg text-gray-700">
         This is where your new schedule will be displayed and managed.
       </p>
@@ -107,6 +108,7 @@ export default function NewSchedulePage() {
         major={major}
         minor={minor}
         electives={electives}
+        scheduleId={scheduleId ?? undefined} // Convert null to undefined
       />
 
       {/* Save Button */}
