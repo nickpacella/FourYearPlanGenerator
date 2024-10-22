@@ -1,3 +1,5 @@
+// components/ClientPlan.tsx
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -31,6 +33,8 @@ export default function ClientPlan({
 }: ClientPlanProps) {
   const [availableElectives, setAvailableElectives] = useState<string[]>([]);
   const [plan, setPlan] = useState<string[][] | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Update available electives when major changes
   useEffect(() => {
@@ -49,6 +53,9 @@ export default function ClientPlan({
 
     console.log('Fetching plan with:', { major, electives, minor });
 
+    setLoading(true);
+    setError(null);
+
     try {
       const response = await fetch('/api/generate-plan', {
         method: 'POST',
@@ -58,7 +65,7 @@ export default function ClientPlan({
         body: JSON.stringify({
           major,
           electives,
-          minor,
+          minor, // Sending as string
         }),
       });
 
@@ -67,10 +74,15 @@ export default function ClientPlan({
         console.log('Received plan:', data.plan);
         setPlan(data.plan);
       } else {
-        console.error('Error generating the plan');
+        const errorData = await response.json();
+        console.error('Error generating the plan:', errorData.error);
+        setError(errorData.error || 'An unknown error occurred.');
       }
     } catch (error) {
       console.error('Error generating the plan', error);
+      setError('An unexpected error occurred while generating the plan.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -88,21 +100,28 @@ export default function ClientPlan({
         <button
           onClick={fetchPlan}
           className="mt-6 w-full px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition"
+          disabled={loading}
         >
-          Update Plan
+          {loading ? 'Generating Plan...' : 'Update Plan'}
         </button>
+
+        {error && (
+          <p className="mt-4 text-red-500">
+            {error}
+          </p>
+        )}
       </div>
 
       {/* Display the dynamic schedule on the right */}
-      <div className="w-1/2 bg-gray-100 p-4 rounded-md">
+      <div className="w-1/2 bg-gray-100 p-4 rounded-md overflow-y-auto max-h-screen">
         <h3 className="text-lg font-semibold">Generated Schedule</h3>
         {plan ? (
           plan.map((semester, index) => (
             <div key={index} className="mb-4">
               <h4 className="font-bold">Semester {index + 1}</h4>
-              <ul>
-                {semester.slice(1).length > 0 ? (
-                  semester.slice(1).map((course, courseIndex) => (
+              <ul className="list-disc pl-5">
+                {semester.length > 0 ? (
+                  semester.map((course, courseIndex) => (
                     <li key={courseIndex}>{course}</li>
                   ))
                 ) : (

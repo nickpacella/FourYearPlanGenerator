@@ -25,8 +25,9 @@ export default function NewSchedulePage() {
   const scheduleId = searchParams.get('id'); // Get the schedule ID from the URL
 
   function generateRandomId() {
-    return '_' + Math.random().toString(36).substr(2, 9);
+    return `_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   }
+  
 
   // Fetch the schedule if an ID is present in the URL and prepopulate dropdowns
   useEffect(() => {
