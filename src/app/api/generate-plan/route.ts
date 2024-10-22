@@ -1,6 +1,8 @@
+// pages/api/generate-plan.ts
+
 import { NextResponse } from 'next/server';
 
-// Example data structure for classes, electives, and prerequisites
+// Example data structures for core courses, electives, and prerequisites
 const coreCoursesByMajor: Record<string, string[]> = {
   CS: ['CS101', 'CS102', 'CS103', 'CS201', 'CS202', 'CS203', 'CS301', 'CS302', 'CS303'],
   Math: ['Math101', 'Math102', 'Math103', 'Math201', 'Math202', 'Math203', 'Math301', 'Math302'],
@@ -16,15 +18,13 @@ const prerequisites: Record<string, string[]> = {
   Bus202: ['Bus102'],
 };
 
-// tool tips
-
 // Dynamic 4-year plan generator function
 function generateFourYearPlan(major: string, electives: string[], minors: string[]): string[][] {
-  const plan: string[][] = Array.from({ length: 8 }, () => []); // 8 semesters, each initialized to an empty array
-  const completedCourses = new Set<string>(); // Track completed courses
+  const plan: string[][] = Array.from({ length: 8 }, () => []); // 8 semesters
+  const completedCourses = new Set<string>();
   const maxClassesPerSemester = 6;
 
-  // Get core courses for the major
+  // Combine core courses, electives, and minors
   let remainingCourses = [...(coreCoursesByMajor[major] || []), ...electives, ...minors];
 
   // Helper function to check if prerequisites are completed
@@ -60,10 +60,31 @@ function generateFourYearPlan(major: string, electives: string[], minors: string
 }
 
 export async function POST(request: Request) {
-  const { major, electives, minors } = await request.json();
+  try {
+    const { major, electives, minor } = await request.json();
 
-  // Generate the plan based on the selected major, electives, and minors
-  const plan = generateFourYearPlan(major, electives, minors);
+    // Validate incoming data
+    if (!major) {
+      return NextResponse.json({ error: 'Major is required.' }, { status: 400 });
+    }
 
-  return NextResponse.json({ plan: plan });
+    if (!Array.isArray(electives)) {
+      return NextResponse.json({ error: 'Electives should be an array of strings.' }, { status: 400 });
+    }
+
+    if (typeof minor !== 'string') {
+      return NextResponse.json({ error: 'Minor should be a string.' }, { status: 400 });
+    }
+
+    // Convert single minor to array
+    const minorsArray = minor ? [minor] : [];
+
+    // Generate the plan
+    const plan = generateFourYearPlan(major, electives, minorsArray);
+
+    return NextResponse.json({ plan: plan });
+  } catch (error) {
+    console.error('Error in POST /api/generate-plan:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
 }
