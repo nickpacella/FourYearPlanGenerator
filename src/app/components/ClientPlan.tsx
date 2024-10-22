@@ -77,7 +77,7 @@ export default function ClientPlan({
     setError(null);
 
     try {
-      const response = await fetch('/api/generatePlan', {
+      const response = await fetch('/api/generate-plan', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

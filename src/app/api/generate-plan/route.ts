@@ -1,4 +1,4 @@
-// src/app/api/generatePlan/route.ts
+// src/app/api/generate-plan/route.ts
 
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
@@ -14,11 +14,11 @@ function generateFourYearPlan(
   electives: string[],
   minors: string[],
   coreCoursesByMajor: Record<string, string[]>,
-  prerequisites: Record<string, string[]>
+  prerequisites: { course: string, requires: string }[]
 ): string[][] {
   const plan: string[][] = Array.from({ length: 8 }, () => []); // 8 semesters
-  const completedCourses = new Set<string>();
-  const maxClassesPerSemester = 6;
+  const completedCourses = new Set<string>(); // Track completed courses
+  const maxClassesPerSemester = 4;
 
   // Combine core courses, electives, and minors
   let remainingCourses = [
@@ -27,35 +27,64 @@ function generateFourYearPlan(
     ...minors,
   ];
 
-  // Helper function to check if prerequisites are completed
+  // Create a prerequisite map where each course points to its prerequisites
+  const prereqMap = new Map<string, string[]>();
+  prerequisites.forEach((prereq) => {
+    if (!prereqMap.has(prereq.course)) {
+      prereqMap.set(prereq.course, []);
+    }
+    prereqMap.get(prereq.course)!.push(prereq.requires);
+  });
+
+  // Helper function to check if all prerequisites for a course are completed
   const canTakeCourse = (course: string): boolean => {
-    const prereqs = prerequisites[course] || [];
+    const prereqs = prereqMap.get(course) || [];
     return prereqs.every((prereq) => completedCourses.has(prereq));
   };
 
-  // Schedule the courses over 8 semesters
+  // Schedule the courses across 8 semesters
   for (let semester = 0; semester < 8; semester++) {
-    let semesterClasses: string[] = [];
+    let semesterCourses: string[] = [];
+    let courseAddedThisSemester = false; // Flag to track if any courses were added in this loop
 
+    // Try to fill the semester with up to 6 courses
     remainingCourses = remainingCourses.filter((course) => {
-      if (semesterClasses.length >= maxClassesPerSemester) return true; // Semester is full
+      // If semester is full, skip to the next semester
+      if (semesterCourses.length >= maxClassesPerSemester) return true;
 
+      // Check if prerequisites are satisfied for this course
       if (canTakeCourse(course)) {
-        semesterClasses.push(course);
-        completedCourses.add(course);
-        return false; // Remove the course from remainingCourses
+        // Before adding, ensure this course and its prerequisite do not exist in the same semester
+        const prereqs = prereqMap.get(course) || [];
+        const existsInSameSemester = prereqs.some(prereq => semesterCourses.includes(prereq));
+
+        if (!existsInSameSemester) {
+          // Add the course to the semester and mark it as completed
+          semesterCourses.push(course);
+          completedCourses.add(course);
+          courseAddedThisSemester = true;
+          return false; // Remove the course from remainingCourses
+        }
       }
 
-      return true; // Course cannot be taken yet
+      return true; // Keep course for the next semester
     });
 
-    plan[semester] = semesterClasses;
+    // If no courses could be added due to unmet prerequisites, stop filling the semester
+    if (!courseAddedThisSemester && remainingCourses.length > 0) {
+      break; // Move to the next semester
+    }
 
-    if (remainingCourses.length === 0) break; // All courses have been scheduled
+    // Assign the courses to the current semester
+    plan[semester] = semesterCourses;
+
+    // If all courses are scheduled, exit the loop early
+    if (remainingCourses.length === 0) break;
   }
 
   return plan;
 }
+
 
 export async function POST(request: Request) {
   try {
@@ -79,7 +108,7 @@ export async function POST(request: Request) {
     const db = client.db('CourseData');
 
     // Fetch core courses for the major
-    const majorData = await db.collection('majors').findOne({});
+    const majorData = await db.collection('Majors').findOne({});
     const coreCoursesByMajor: Record<string, string[]> = {};
     if (majorData) {
       const majorInfo = majorData.majors.find((m: any) => m.name === major);
@@ -89,32 +118,33 @@ export async function POST(request: Request) {
     }
 
     // Fetch prerequisites
-    const prerequisitesData = await db.collection('prerequisites').findOne({});
-    const prerequisites: Record<string, string[]> = {};
-    if (prerequisitesData && prerequisitesData.prerequisites) {
-      prerequisitesData.prerequisites.forEach((prereq: any) => {
-        if (!prerequisites[prereq.course]) {
-          prerequisites[prereq.course] = [];
-        }
-        prerequisites[prereq.course].push(prereq.requires);
-      });
-    }
+  // Fetch prerequisites
+const prerequisitesData = await db.collection('Prerequisites').findOne({});
+let prerequisites: { course: string, requires: string }[] = [];
 
-    // Convert single minor to array
-    const minorsArray = minor ? [minor] : [];
+if (prerequisitesData && prerequisitesData.prerequisites) {
+  prerequisites = prerequisitesData.prerequisites.map((prereq: any) => ({
+    course: prereq.course,
+    requires: prereq.requires,
+  }));
+}
 
-    // Generate the plan
-    const plan = generateFourYearPlan(
-      major,
-      electives,
-      minorsArray,
-      coreCoursesByMajor,
-      prerequisites
-    );
+// Convert single minor to array
+const minorsArray = minor ? [minor] : [];
+
+// Generate the plan
+const plan = generateFourYearPlan(
+  major,
+  electives,
+  minorsArray,
+  coreCoursesByMajor,
+  prerequisites // This is now the expected array of prerequisite objects
+);
+
 
     return NextResponse.json({ plan });
   } catch (error) {
-    console.error('Error in POST /api/generatePlan:', error);
+    console.error('Error in POST /api/generate-plan:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
