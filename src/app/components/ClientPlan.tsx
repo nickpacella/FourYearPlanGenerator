@@ -1,5 +1,3 @@
-// components/ClientPlan.tsx
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -21,6 +19,7 @@ interface ClientPlanProps {
   major: string;
   minor: string;
   electives: string[];
+  scheduleId?: string; // Add this prop to know if we're updating an existing schedule
 }
 
 export default function ClientPlan({
@@ -30,6 +29,7 @@ export default function ClientPlan({
   major,
   minor,
   electives,
+  scheduleId, // Use this prop for updating an existing schedule
 }: ClientPlanProps) {
   const [availableElectives, setAvailableElectives] = useState<string[]>([]);
   const [plan, setPlan] = useState<string[][] | null>(null);
@@ -86,6 +86,47 @@ export default function ClientPlan({
     }
   }
 
+  // Function to update the schedule in MongoDB
+  async function updateSchedule() {
+    if (!scheduleId) {
+      alert('No schedule selected for updating.'); // Make sure scheduleId is available
+      return;
+    }
+
+    console.log('Updating schedule with:', { scheduleId, major, electives, minor });
+
+    try {
+      const response = await fetch('/api/updateSchedule', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: scheduleId, // Existing schedule ID to be updated
+          schedule: {
+            major,
+            minor,
+            electives,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        console.log('Schedule updated successfully!');
+      } else {
+        console.error('Failed to update schedule');
+      }
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+    }
+  }
+
+  // Combined function to both fetch the plan and update the schedule
+  const handleUpdatePlan = async () => {
+    await fetchPlan(); // Fetch the plan
+    await updateSchedule(); // Update the schedule
+  };
+
   return (
     <div className="w-full flex space-x-8">
       <div className="w-1/2">
@@ -98,11 +139,11 @@ export default function ClientPlan({
         <MinorsDropdown minor={minor} setMinor={setMinor} />
 
         <button
-          onClick={fetchPlan}
+          onClick={handleUpdatePlan} // Calls the combined function to update the plan and schedule
           className="mt-6 w-full px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition"
           disabled={loading}
         >
-          {loading ? 'Generating Plan...' : 'Update Plan'}
+          {loading ? 'Generating & Updating Plan...' : 'Update Plan'}
         </button>
 
         {error && (
