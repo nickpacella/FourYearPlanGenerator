@@ -1,31 +1,31 @@
-// pages/api/generate-plan.ts
+// src/app/api/generatePlan/route.ts
 
 import { NextResponse } from 'next/server';
+import clientPromise from '@/lib/mongodb';
 
-// Example data structures for core courses, electives, and prerequisites
-const coreCoursesByMajor: Record<string, string[]> = {
-  CS: ['CS101', 'CS102', 'CS103', 'CS201', 'CS202', 'CS203', 'CS301', 'CS302', 'CS303'],
-  Math: ['Math101', 'Math102', 'Math103', 'Math201', 'Math202', 'Math203', 'Math301', 'Math302'],
-  Business: ['Bus101', 'Bus102', 'Bus103', 'Bus201', 'Bus202', 'Bus203', 'Bus301', 'Bus302'],
-};
+interface GeneratePlanRequest {
+  major: string;
+  electives: string[];
+  minor: string;
+}
 
-const prerequisites: Record<string, string[]> = {
-  CS102: ['CS101'],
-  CS201: ['CS102'],
-  CS202: ['CS201'],
-  Math202: ['Math101', 'Math102'],
-  Bus201: ['Bus101'],
-  Bus202: ['Bus102'],
-};
-
-// Dynamic 4-year plan generator function
-function generateFourYearPlan(major: string, electives: string[], minors: string[]): string[][] {
+function generateFourYearPlan(
+  major: string,
+  electives: string[],
+  minors: string[],
+  coreCoursesByMajor: Record<string, string[]>,
+  prerequisites: Record<string, string[]>
+): string[][] {
   const plan: string[][] = Array.from({ length: 8 }, () => []); // 8 semesters
   const completedCourses = new Set<string>();
   const maxClassesPerSemester = 6;
 
   // Combine core courses, electives, and minors
-  let remainingCourses = [...(coreCoursesByMajor[major] || []), ...electives, ...minors];
+  let remainingCourses = [
+    ...(coreCoursesByMajor[major] || []),
+    ...electives,
+    ...minors,
+  ];
 
   // Helper function to check if prerequisites are completed
   const canTakeCourse = (course: string): boolean => {
@@ -40,10 +40,9 @@ function generateFourYearPlan(major: string, electives: string[], minors: string
     remainingCourses = remainingCourses.filter((course) => {
       if (semesterClasses.length >= maxClassesPerSemester) return true; // Semester is full
 
-      // Check if the course can be taken in this semester (prerequisites fulfilled)
       if (canTakeCourse(course)) {
         semesterClasses.push(course);
-        completedCourses.add(course); // Mark course as completed
+        completedCourses.add(course);
         return false; // Remove the course from remainingCourses
       }
 
@@ -55,13 +54,12 @@ function generateFourYearPlan(major: string, electives: string[], minors: string
     if (remainingCourses.length === 0) break; // All courses have been scheduled
   }
 
-  // Return the generated plan
   return plan;
 }
 
 export async function POST(request: Request) {
   try {
-    const { major, electives, minor } = await request.json();
+    const { major, electives, minor } = (await request.json()) as GeneratePlanRequest;
 
     // Validate incoming data
     if (!major) {
@@ -76,15 +74,47 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Minor should be a string.' }, { status: 400 });
     }
 
+    // Connect to MongoDB
+    const client = await clientPromise;
+    const db = client.db('CourseData');
+
+    // Fetch core courses for the major
+    const majorData = await db.collection('majors').findOne({});
+    const coreCoursesByMajor: Record<string, string[]> = {};
+    if (majorData) {
+      const majorInfo = majorData.majors.find((m: any) => m.name === major);
+      if (majorInfo) {
+        coreCoursesByMajor[major] = majorInfo.courses;
+      }
+    }
+
+    // Fetch prerequisites
+    const prerequisitesData = await db.collection('prerequisites').findOne({});
+    const prerequisites: Record<string, string[]> = {};
+    if (prerequisitesData && prerequisitesData.prerequisites) {
+      prerequisitesData.prerequisites.forEach((prereq: any) => {
+        if (!prerequisites[prereq.course]) {
+          prerequisites[prereq.course] = [];
+        }
+        prerequisites[prereq.course].push(prereq.requires);
+      });
+    }
+
     // Convert single minor to array
     const minorsArray = minor ? [minor] : [];
 
     // Generate the plan
-    const plan = generateFourYearPlan(major, electives, minorsArray);
+    const plan = generateFourYearPlan(
+      major,
+      electives,
+      minorsArray,
+      coreCoursesByMajor,
+      prerequisites
+    );
 
-    return NextResponse.json({ plan: plan });
+    return NextResponse.json({ plan });
   } catch (error) {
-    console.error('Error in POST /api/generate-plan:', error);
+    console.error('Error in POST /api/generatePlan:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

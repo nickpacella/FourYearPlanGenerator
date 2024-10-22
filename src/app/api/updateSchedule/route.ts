@@ -1,43 +1,47 @@
-// app/api/updateSchedule/route.ts
+// src/app/api/updateSchedule/route.ts
 
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
-import { auth } from '@clerk/nextjs/server';
+import { ObjectId } from 'mongodb';
+
+interface UpdateScheduleRequest {
+  id: string;
+  schedule: {
+    major: string;
+    minor: string;
+    electives: string[];
+  };
+}
 
 export async function POST(request: Request) {
   try {
-    const { userId } = auth(); // Get the user's Clerk ID
-    if (!userId) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    const { id, schedule } = (await request.json()) as UpdateScheduleRequest;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Schedule ID is required.' }, { status: 400 });
     }
 
-    const body = await request.json();
-    const { id, schedule } = body;
-
-    if (!id || !schedule) {
-      return NextResponse.json({ message: 'Missing fields' }, { status: 400 });
+    if (!schedule) {
+      return NextResponse.json({ error: 'Schedule data is required.' }, { status: 400 });
     }
 
+    // Connect to MongoDB
     const client = await clientPromise;
-    const db = client.db('FourYearPlanGen'); // Ensure this is your database name
-    const usersCollection = db.collection('users');
+    const db = client.db('CourseData');
 
-    const result = await usersCollection.updateOne(
-      { clerkId: userId, 'schedules.id': id },
-      {
-        $set: {
-          'schedules.$.schedule': schedule,
-        },
-      }
+    // Update the schedule document
+    const result = await db.collection('schedules').updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { ...schedule } }
     );
 
-    if (result.modifiedCount === 0) {
-      return NextResponse.json({ message: 'Schedule not found or not updated' }, { status: 404 });
+    if (result.modifiedCount === 1) {
+      return NextResponse.json({ message: 'Schedule updated successfully.' }, { status: 200 });
+    } else {
+      return NextResponse.json({ error: 'Schedule not found or not updated.' }, { status: 404 });
     }
-
-    return NextResponse.json({ message: 'Schedule updated successfully' });
   } catch (error) {
-    console.error('Error updating schedule:', error);
-    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
+    console.error('Error in POST /api/updateSchedule:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

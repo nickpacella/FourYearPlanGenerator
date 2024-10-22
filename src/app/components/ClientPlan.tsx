@@ -1,17 +1,12 @@
-"use client";
+// src/components/ClientPlan.tsx
+
+'use client';
 
 import { useState, useEffect } from 'react';
 import MajorDropdown from './MajorDropdown';
 import ElectivesDropdown from './ElectivesDropdown';
 import MinorsDropdown from './MinorsDropdown';
 
-const electivesByMajor: Record<string, string[]> = {
-  CS: ['CS Elective 1', 'CS Elective 2', 'CS Elective 3'],
-  Math: ['Math Elective 1', 'Math Elective 2', 'Math Elective 3'],
-  EECE: ['EECE Elective 1', 'EECE Elective 2', 'EECE Elective 3'],
-};
-
-// Define prop types for ClientPlan
 interface ClientPlanProps {
   setMajor: (major: string) => void;
   setMinor: (minor: string) => void;
@@ -19,7 +14,7 @@ interface ClientPlanProps {
   major: string;
   minor: string;
   electives: string[];
-  scheduleId?: string; // Add this prop to know if we're updating an existing schedule
+  scheduleId?: string; // Optional prop for updating an existing schedule
 }
 
 export default function ClientPlan({
@@ -29,20 +24,45 @@ export default function ClientPlan({
   major,
   minor,
   electives,
-  scheduleId, // Use this prop for updating an existing schedule
+  scheduleId,
 }: ClientPlanProps) {
   const [availableElectives, setAvailableElectives] = useState<string[]>([]);
   const [plan, setPlan] = useState<string[][] | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [allElectives, setAllElectives] = useState<string[]>([]);
+
+  // Fetch electives on component mount
+  useEffect(() => {
+    async function fetchElectives() {
+      try {
+        const res = await fetch('/api/getElectives');
+        if (res.ok) {
+          const data = await res.json();
+          setAllElectives(data.electives);
+        } else {
+          console.error('Failed to fetch electives');
+        }
+      } catch (error) {
+        console.error('Error fetching electives:', error);
+      }
+    }
+
+    fetchElectives();
+  }, []);
+
   // Update available electives when major changes
   useEffect(() => {
     if (major) {
-      setAvailableElectives(electivesByMajor[major] || []);
+      // If electives are global, use allElectives
+      // If electives are specific to majors, adjust the API accordingly
+      setAvailableElectives(allElectives);
       setElectives([]); // Reset electives when major changes
+    } else {
+      setAvailableElectives([]);
     }
-  }, [major, setElectives]);
+  }, [major, allElectives, setElectives]);
 
   // Function to fetch the generated plan
   async function fetchPlan() {
@@ -57,7 +77,7 @@ export default function ClientPlan({
     setError(null);
 
     try {
-      const response = await fetch('/api/generate-plan', {
+      const response = await fetch('/api/generatePlan', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -89,7 +109,7 @@ export default function ClientPlan({
   // Function to update the schedule in MongoDB
   async function updateSchedule() {
     if (!scheduleId) {
-      alert('No schedule selected for updating.'); // Make sure scheduleId is available
+      alert('No schedule selected for updating.');
       return;
     }
 
@@ -114,7 +134,8 @@ export default function ClientPlan({
       if (response.ok) {
         console.log('Schedule updated successfully!');
       } else {
-        console.error('Failed to update schedule');
+        const errorData = await response.json();
+        console.error('Failed to update schedule:', errorData.error);
       }
     } catch (error) {
       console.error('Error updating schedule:', error);
@@ -128,8 +149,8 @@ export default function ClientPlan({
   };
 
   return (
-    <div className="w-full flex space-x-8">
-      <div className="w-1/2">
+    <div className="w-full flex flex-col md:flex-row space-y-8 md:space-y-0 md:space-x-8">
+      <div className="w-full md:w-1/2 space-y-4">
         <MajorDropdown major={major} setMajor={setMajor} />
         <ElectivesDropdown
           electives={electives}
@@ -154,7 +175,7 @@ export default function ClientPlan({
       </div>
 
       {/* Display the dynamic schedule on the right */}
-      <div className="w-1/2 bg-gray-100 p-4 rounded-md overflow-y-auto max-h-screen">
+      <div className="w-full md:w-1/2 bg-gray-100 p-4 rounded-md overflow-y-auto max-h-screen">
         <h3 className="text-lg font-semibold">Generated Schedule</h3>
         {plan ? (
           plan.map((semester, index) => (

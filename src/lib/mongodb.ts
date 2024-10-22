@@ -1,26 +1,22 @@
-import { MongoClient, ServerApiVersion } from 'mongodb';
+// src/lib/mongodb.ts
 
-const uri = process.env.MONGODB_URI as string; // pull your connection string from env vars
+import { MongoClient } from 'mongodb';
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const options = {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-};
+const uri = process.env.MONGODB_URI as string;
+const options = {};
 
-// add the type to global object for typescript
-declare global {
-  var _mongoClientPromise: Promise<MongoClient> | undefined;
+// Ensure the MONGODB_URI is defined
+if (!uri) {
+  throw new Error('Please define the MONGODB_URI environment variable in your .env.local');
 }
 
+// Prevent multiple instances of MongoClient in development
 let client: MongoClient;
 let clientPromise: Promise<MongoClient>;
 
-if (!process.env.MONGODB_URI) {
-  throw new Error('Please add your Mongo URI to .env.local');
+declare global {
+  // eslint-disable-next-line no-var
+  var _mongoClientPromise: Promise<MongoClient>;
 }
 
 if (process.env.NODE_ENV === 'development') {
