@@ -1,31 +1,60 @@
-"use client"; // Ensure this component runs as a Client Component
 // src/components/ClientPlan.tsx
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import MajorDropdown from './MajorDropdown';
 import ElectivesDropdown from './ElectivesDropdown';
 import MinorsDropdown from './MinorsDropdown';
 
+/**
+ * Interface defining the props expected by the ClientPlan component.
+ */
 interface ClientPlanProps {
+  /**
+   * Function to update the selected major in the parent component.
+   */
   setMajor: (major: string) => void;
+
+  /**
+   * Function to update the selected minor in the parent component.
+   */
   setMinor: (minor: string) => void;
+
+  /**
+   * Function to update the selected electives in the parent component.
+   */
   setElectives: (electives: string[]) => void;
+
+  /**
+   * Currently selected major.
+   */
   major: string;
+
+  /**
+   * Currently selected minor.
+   */
   minor: string;
+
+  /**
+   * Currently selected electives.
+   */
   electives: string[];
-  scheduleId?: string; // Optional prop for updating an existing schedule
+
+  /**
+   * Optional schedule ID, used when updating an existing schedule.
+   */
+  scheduleId?: string;
 }
 
 /**
  * ClientPlan Component
- * 
- * This component provides dropdowns for selecting major, minor, and electives.
- * It handles the dynamic updating of available electives based on the selected major
- * and manages the generation and updating of the schedule plan.
+ *
+ * Handles the selection of major, minor, and electives.
+ * Fetches available electives based on selected major and minor.
+ * Generates and displays the academic plan.
  */
-export default function ClientPlan({
+const ClientPlan: React.FC<ClientPlanProps> = ({
   setMajor,
   setMinor,
   setElectives,
@@ -33,24 +62,46 @@ export default function ClientPlan({
   minor,
   electives,
   scheduleId,
-}: ClientPlanProps) {
-  // State to hold the available electives based on the selected major
+}) => {
+  /**
+   * State to hold available electives fetched from the backend.
+   */
   const [availableElectives, setAvailableElectives] = useState<string[]>([]);
-  
-  // State to hold the generated plan (array of semesters, each containing courses)
-  const [plan, setPlan] = useState<string[][] | null>(null);
-  
-  // State to indicate if the plan generation is in progress
-  const [loading, setLoading] = useState<boolean>(false);
-  
-  // State to hold any error messages during plan generation
-  const [error, setError] = useState<string | null>(null);
 
+  /**
+   * State to manage loading status while fetching electives.
+   */
+  const [loadingElectives, setLoadingElectives] = useState<boolean>(false);
+
+  /**
+   * State to manage any errors that occur during fetching electives.
+   */
+  const [errorElectives, setErrorElectives] = useState<string | null>(null);
+
+  /**
+   * State to hold all electives (fetched once on mount).
+   */
   const [allElectives, setAllElectives] = useState<string[]>([]);
 
-  // Fetch electives on component mount
+  /**
+   * State to hold the generated academic plan.
+   * The plan is an array of semesters, each containing an array of courses.
+   */
+  const [plan, setPlan] = useState<string[][] | null>(null);
+
+  /**
+   * State to indicate if the plan generation is in progress.
+   */
+  const [generatingPlan, setGeneratingPlan] = useState<boolean>(false);
+
+  /**
+   * State to hold any error messages during plan generation.
+   */
+  const [planError, setPlanError] = useState<string | null>(null);
+
+  // Fetch all electives on component mount
   useEffect(() => {
-    async function fetchElectives() {
+    async function fetchAllElectives() {
       try {
         const res = await fetch('/api/getElectives');
         if (res.ok) {
@@ -64,7 +115,7 @@ export default function ClientPlan({
       }
     }
 
-    fetchElectives();
+    fetchAllElectives();
   }, []);
 
   // Update available electives when major changes
@@ -76,28 +127,23 @@ export default function ClientPlan({
       setElectives([]); // Reset electives when major changes
     } else {
       setAvailableElectives([]);
+      setElectives([]); // Optionally reset electives if major is deselected
     }
   }, [major, allElectives, setElectives]);
 
   /**
-   * fetchPlan Function
-   * 
-   * Sends a POST request to the backend API to generate a plan based on the selected
-   * major, minor, and electives. Updates the plan state with the received data.
+   * Function to generate the academic plan by sending selected options to the backend.
    */
-  async function fetchPlan() {
+  const generatePlan = async () => {
     if (!major) {
       alert('Please select a major to generate the plan.');
       return;
     }
 
-    console.log('Fetching plan with:', { major, electives, minor });
-
-    setLoading(true); // Indicate that the plan generation is in progress
-    setError(null); // Reset any previous errors
+    setGeneratingPlan(true);
+    setPlanError(null);
 
     try {
-      // Make a POST request to the /api/generate-plan endpoint with the selected options
       const response = await fetch('/api/generate-plan', {
         method: 'POST',
         headers: {
@@ -105,51 +151,43 @@ export default function ClientPlan({
         },
         body: JSON.stringify({
           major,
+          minor,
           electives,
-          minor, // Send minor as a string
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Received plan:', data.plan);
-        setPlan(data.plan); // Update the plan state with the received data
+        setPlan(data.plan); // Assuming the backend returns a 'plan' array
       } else {
         const errorData = await response.json();
-        console.error('Error generating the plan:', errorData.error);
-        setError(errorData.error || 'An unknown error occurred.');
+        setPlanError(errorData.error || 'Failed to generate the plan.');
       }
-    } catch (error) {
-      console.error('Error generating the plan', error);
-      setError('An unexpected error occurred while generating the plan.');
+    } catch (error: any) {
+      console.error('Error generating the plan:', error);
+      setPlanError('An unexpected error occurred while generating the plan.');
     } finally {
-      setLoading(false); // Reset the loading state
+      setGeneratingPlan(false);
     }
-  }
+  };
 
   /**
-   * updateSchedule Function
-   * 
-   * Sends a POST request to the backend API to update an existing schedule with
-   * the current selections. Requires a valid schedule ID.
+   * Function to update an existing schedule by sending updated selections to the backend.
    */
-  async function updateSchedule() {
+  const updateSchedule = async () => {
     if (!scheduleId) {
       alert('No schedule selected for updating.');
       return;
     }
 
-    console.log('Updating schedule with:', { scheduleId, major, electives, minor });
-
     try {
-      // Make a POST request to the /api/updateSchedule endpoint with the updated schedule data
       const response = await fetch('/api/updateSchedule', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          id: scheduleId, // Existing schedule ID to be updated
+          id: scheduleId,
           schedule: {
             major,
             minor,
@@ -167,84 +205,78 @@ export default function ClientPlan({
     } catch (error) {
       console.error('Error updating schedule:', error);
     }
-  }
+  };
 
   /**
-   * handleUpdatePlan Function
-   * 
-   * Combines fetching the plan and updating the schedule into a single asynchronous operation.
-   * Ensures that the plan is generated before attempting to update the schedule.
+   * Handler for the Update Plan button.
+   * Generates the plan and updates the schedule if scheduleId is present.
    */
   const handleUpdatePlan = async () => {
-    await fetchPlan(); // Generate the plan
-    await updateSchedule(); // Update the schedule with the new plan
+    await generatePlan();
+    if (scheduleId) {
+      await updateSchedule();
+    }
   };
 
   return (
     <div className="w-full flex flex-col md:flex-row space-y-8 md:space-y-0 md:space-x-8">
       <div className="w-full md:w-1/2 space-y-4">
-        <MajorDropdown major={major} setMajor={setMajor} />
-        
-        {/* Dropdown for selecting Electives */}
-        <ElectivesDropdown
-          electives={electives}
-          setElectives={setElectives}
-          availableElectives={availableElectives}
-        />
-        
-        {/* Dropdown for selecting Minor */}
-        <MinorsDropdown minor={minor} setMinor={setMinor} />
+        {/* Major Selection */}
+        <MajorDropdown onSelect={setMajor} selectedMajor={major} />
 
-        {/* 
-          Update Plan Button
-          Triggers the handleUpdatePlan function to generate and update the schedule.
-          Disabled while the plan is being generated.
-        */}
+        {/* Electives Selection */}
+        <ElectivesDropdown
+          onSelect={setElectives}
+          availableElectives={availableElectives}
+          selectedElectives={electives}
+          loading={loadingElectives}
+          error={errorElectives}
+        />
+
+        {/* Minor Selection */}
+        <MinorsDropdown onSelect={setMinor} selectedMinor={minor} />
+
+        {/* Update Plan Button */}
         <button
           onClick={handleUpdatePlan}
           className="mt-6 w-full px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition"
-          disabled={loading}
+          disabled={generatingPlan}
         >
-          {loading ? 'Generating & Updating Plan...' : 'Update Plan'}
+          {generatingPlan ? 'Generating & Updating Plan...' : 'Generate & Update Plan'}
         </button>
 
-        {/* 
-          Error Message
-          Displays any errors that occur during the plan generation.
-        */}
-        {error && (
+        {/* Error Message */}
+        {planError && (
           <p className="mt-4 text-red-500">
-            {error}
+            {planError}
           </p>
         )}
       </div>
 
       {/* Display the dynamic schedule on the right */}
       <div className="w-full md:w-1/2 bg-gray-100 p-4 rounded-md overflow-y-auto max-h-screen">
-        <h3 className="text-lg font-semibold">Generated Schedule</h3>
+        <h3 className="text-lg font-semibold mb-4">Generated Schedule</h3>
         {plan ? (
-          // Iterate over each semester and display its courses
           plan.map((semester, index) => (
-            <div key={index} className="mb-4">
-              <h4 className="font-bold">Semester {index + 1}</h4>
-              <ul className="list-disc pl-5">
-                {semester.length > 0 ? (
-                  // List each course in the semester
-                  semester.map((course, courseIndex) => (
+            <div key={index} className="mb-6">
+              <h4 className="font-bold text-md mb-2">Semester {index + 1}</h4>
+              {semester.length > 0 ? (
+                <ul className="list-disc list-inside">
+                  {semester.map((course, courseIndex) => (
                     <li key={courseIndex}>{course}</li>
-                  ))
-                ) : (
-                  // Display a message if no courses are assigned to the semester
-                  <li>No courses for this semester.</li>
-                )}
-              </ul>
+                  ))}
+                </ul>
+              ) : (
+                <p>No courses assigned to this semester.</p>
+              )}
             </div>
           ))
         ) : (
-          // Prompt the user to generate a schedule if none exists
-          <p>Select a major and electives to generate your schedule.</p>
+          <p>Select a major, minor, and electives to generate your academic plan.</p>
         )}
       </div>
     </div>
   );
-}
+};
+
+export default ClientPlan;

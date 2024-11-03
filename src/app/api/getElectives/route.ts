@@ -1,19 +1,24 @@
 // src/app/api/getElectives/route.ts
 
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { getCourses } from '@/lib/getCourses';
+import { Course } from '@/types/Course';
 
 export async function GET() {
   try {
-    const client = await clientPromise;
-    const db = client.db('CourseData');
+    const courses: Course[] = await getCourses();
 
-    const electivesData = await db.collection('Electives').findOne({});
-    const electives = electivesData?.electives || [];
+    // Assuming electives are courses categorized as 'Elective' or both 'Core' and 'Elective'
+    const electives = courses
+      .filter(course => course.categories.includes('Elective'))
+      .map(course => course.code);
 
     return NextResponse.json({ electives });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in GET /api/getElectives:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch electives.' },
+      { status: 500 }
+    );
   }
 }

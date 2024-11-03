@@ -161,11 +161,15 @@ export default function HomePage() {
             
             {/* Delete button for removing the schedule */}
             <button
-              onClick={() => deleteSchedule(schedule.id)}
+            onClick={() => {
+              if (window.confirm("Are you sure you want to delete this schedule?")) {
+                deleteSchedule(schedule.id); // Trigger deletion if confirmed
+                }
+              }}
               className="mt-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition"
-            >
-              Delete Schedule
-            </button>
+              >
+                Delete Schedule
+                </button>
           </div>
         ))}
       </div>

@@ -1,19 +1,21 @@
 // src/app/api/getMajors/route.ts
 
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import { getMajors } from '@/lib/getMajors';
 
 export async function GET() {
   try {
-    const client = await clientPromise;
-    const db = client.db('CourseData');
+    const majors = await getMajors();
 
-    const majorData = await db.collection('Majors').findOne({});
-    const majors = majorData?.majors.map((m: any) => m.name) || [];
+    // Extract only the names of the majors for the dropdown
+    const majorNames = majors.map((major) => major.name);
 
-    return NextResponse.json({ majors });
-  } catch (error) {
+    return NextResponse.json({ majors: majorNames });
+  } catch (error: any) {
     console.error('Error in GET /api/getMajors:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch majors.' },
+      { status: 500 }
+    );
   }
 }

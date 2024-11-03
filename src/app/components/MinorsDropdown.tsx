@@ -1,49 +1,60 @@
 // src/components/MinorsDropdown.tsx
 
-import { useEffect, useState } from 'react';
+'use client';
 
+import React from 'react';
+
+/**
+ * Interface defining the props expected by the MinorsDropdown component.
+ */
 interface MinorsDropdownProps {
-  minor: string;
-  setMinor: (minor: string) => void;
+  /**
+   * Function to update the selected minor in the parent component.
+   */
+  onSelect: (minor: string) => void;
+
+  /**
+   * Currently selected minor.
+   */
+  selectedMinor: string;
 }
 
-export default function MinorsDropdown({ minor, setMinor }: MinorsDropdownProps) {
-  const [minors, setMinors] = useState<string[]>([]);
-
-  useEffect(() => {
-    async function fetchMinors() {
-      try {
-        const res = await fetch('/api/getMinors');
-        if (res.ok) {
-          const data = await res.json();
-          setMinors(data.minors);
-        } else {
-          console.error('Failed to fetch minors');
-        }
-      } catch (error) {
-        console.error('Error fetching minors:', error);
-      }
-    }
-
-    fetchMinors();
-  }, []);
+/**
+ * MinorsDropdown Component
+ *
+ * Renders a dropdown menu for selecting a minor.
+ */
+const MinorsDropdown: React.FC<MinorsDropdownProps> = ({ onSelect, selectedMinor }) => {
+  /**
+   * Handles changes in the select element.
+   *
+   * @param e - The change event from the select element.
+   */
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onSelect(e.target.value);
+  };
 
   return (
-    <div className="mt-4">
-      <label htmlFor="minor-select" className="block font-medium">Select Minor:</label>
+    <div>
+      <label htmlFor="minor-dropdown" className="block text-sm font-medium text-gray-700">
+        Select Minor:
+      </label>
       <select
-        id="minor-select"
-        value={minor}
-        onChange={(e) => setMinor(e.target.value)}
-        className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+        id="minor-dropdown"
+        value={selectedMinor}
+        onChange={handleChange}
+        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
       >
-        <option value="">Select Minor</option>
-        {minors.map((m) => (
-          <option key={m} value={m}>
-            {m}
-          </option>
-        ))}
+        <option value="" disabled>
+          Select a minor
+        </option>
+        {/* Replace with actual minor options */}
+        <option value="Mathematics">Mathematics</option>
+        <option value="Electrical and Computer Engineering">Electrical and Computer Engineering</option>
+        {/* Add more minors as needed */}
       </select>
     </div>
   );
-}
+};
+
+export default MinorsDropdown;
