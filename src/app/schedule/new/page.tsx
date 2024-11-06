@@ -14,12 +14,60 @@ type Schedule = {
   };
 };
 
+interface NameScheduleModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (name: string) => void;
+}
+
+const NameScheduleModal: React.FC<NameScheduleModalProps> = ({ isOpen, onClose, onSave }) => {
+  const [scheduleName, setScheduleName] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleSave = () => {
+    if (scheduleName.trim()) {
+      onSave(scheduleName);
+      setScheduleName('');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+      <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center">
+        <h3 className="text-xl font-semibold mb-4">Name Your Schedule</h3>
+        <input
+          type="text"
+          placeholder="Enter schedule name"
+          value={scheduleName}
+          onChange={(e) => setScheduleName(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:border-indigo-500"
+        />
+        <div className="flex justify-around">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 export default function NewSchedulePage() {
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [major, setMajor] = useState<string>('');
   const [minor, setMinor] = useState<string>('');
   const [electives, setElectives] = useState<string[]>([]);
+  const [isModalOpen, setModalOpen] = useState(false);
 
   const searchParams = useSearchParams();
   const scheduleId = searchParams.get('id');
@@ -49,20 +97,20 @@ export default function NewSchedulePage() {
       }
     };
 
-    // Only fetch if schedule data has not been set yet to prevent re-fetching on re-renders
     if (!schedule && scheduleId) {
       fetchSchedule();
     }
   }, [scheduleId, schedule]);
 
-  const handleSaveSchedule = async () => {
-    const scheduleName = prompt("Enter a name for your schedule:");
-
-    if (!scheduleName || !major || !minor || electives.length === 0) {
+  const handleSaveSchedule = () => {
+    if (!major || !minor || electives.length === 0) {
       alert('Please ensure all fields are filled before saving.');
       return;
     }
+    setModalOpen(true);
+  };
 
+  const saveSchedule = async (scheduleName: string) => {
     const scheduleToSave = {
       id: scheduleId ? scheduleId : generateRandomId(),
       name: scheduleName,
@@ -90,6 +138,8 @@ export default function NewSchedulePage() {
       }
     } catch (error) {
       console.error('Error saving schedule:', error);
+    } finally {
+      setModalOpen(false);
     }
   };
 
@@ -125,6 +175,13 @@ export default function NewSchedulePage() {
           Schedule has been saved successfully!
         </p>
       )}
+
+      {/* Name Schedule Modal */}
+      <NameScheduleModal
+        isOpen={isModalOpen}
+        onClose={() => setModalOpen(false)}
+        onSave={saveSchedule}
+      />
     </div>  
   );
 }
