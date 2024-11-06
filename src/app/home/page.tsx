@@ -17,9 +17,44 @@ type Schedule = {
   };
 };
 
+interface DeleteConfirmationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({ isOpen, onClose, onConfirm }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+      <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center">
+        <h3 className="text-xl font-semibold mb-4">Confirm Deletion</h3>
+        <p className="text-gray-600 mb-6">Are you sure you want to delete this schedule?</p>
+        <div className="flex justify-around">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 transition"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function HomePage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [name, setName] = useState<string>('User');
+  const [isModalOpen, setModalOpen] = useState(false);
+  const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null);
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const { user } = useUser();
@@ -49,6 +84,11 @@ export default function HomePage() {
     router.push(`/schedule/new?id=${scheduleId}`);
   };
 
+  const handleDeleteClick = (scheduleId: string) => {
+    setScheduleToDelete(scheduleId);
+    setModalOpen(true);
+  };
+
   const deleteSchedule = async (scheduleId: string) => {
     try {
       const response = await fetch(`/api/deleteSchedule`, {
@@ -70,6 +110,9 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error('Error deleting schedule:', error);
+    } finally {
+      setModalOpen(false);
+      setScheduleToDelete(null);
     }
   };
 
@@ -90,7 +133,7 @@ export default function HomePage() {
             {/* Edit icon/button to navigate to the schedule page */}
             <button
               className="absolute top-6 right-6 text-indigo-500 hover:text-indigo-700"
-              onClick={() => openSchedule(schedule.id)} // Reusing openSchedule logic
+              onClick={() => openSchedule(schedule.id)}
               aria-label="Edit Schedule"
             >
               <FontAwesomeIcon icon={faPencilAlt} size="lg" />
@@ -103,11 +146,7 @@ export default function HomePage() {
             </p>
 
             <button
-              onClick={() => {
-                if (window.confirm("Are you sure you want to delete this schedule?")) {
-                  deleteSchedule(schedule.id);
-                }
-              }}
+              onClick={() => handleDeleteClick(schedule.id)}
               className="mt-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition"
             >
               Delete Schedule
@@ -121,6 +160,17 @@ export default function HomePage() {
           Create New Schedule
         </button>
       </Link>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+  isOpen={isModalOpen}
+  onClose={() => setModalOpen(false)}
+  onConfirm={() => {
+    if (scheduleToDelete) {
+      deleteSchedule(scheduleToDelete);
+    }
+  }}
+/>
     </div>
   );
 }
