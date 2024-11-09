@@ -55,6 +55,8 @@ export default function HomePage() {
   const [name, setName] = useState<string>('User');
   const [isModalOpen, setModalOpen] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null);
+  const [selectedSchedules, setSelectedSchedules] = useState<Set<string>>(new Set());
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const { user } = useUser();
@@ -70,6 +72,9 @@ export default function HomePage() {
     const fetchSchedules = async () => {
       try {
         const response = await fetch('/api/getSchedules');
+        if (!response.ok) {
+          throw new Error('Failed to fetch schedules.');
+        }
         const data = await response.json();
         setSchedules(data.schedules);
       } catch (error) {
@@ -116,6 +121,30 @@ export default function HomePage() {
     }
   };
 
+  const handleCheckboxChange = (scheduleId: string) => {
+    setSelectedSchedules((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(scheduleId)) {
+        newSet.delete(scheduleId);
+      } else {
+        newSet.add(scheduleId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleCompareSchedules = () => {
+    if (selectedSchedules.size < 2) {
+      setErrorMessage('Please select at least two schedules to compare.');
+      return;
+    }
+
+    setErrorMessage(null);
+    const selectedIds = Array.from(selectedSchedules);
+    // Navigate to compareSchedules page with selected IDs as query params
+    router.push(`/compareSchedules?schedules=${selectedIds.join(',')}`);
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
       <h1 className="text-5xl font-extrabold text-indigo-600 mb-2 leading-relaxed">
@@ -123,9 +152,26 @@ export default function HomePage() {
       </h1>
       <p className="text-3xl text-gray-700 mb-8">View your saved plans</p>
 
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="mb-4 p-4 bg-red-200 text-red-800 rounded-lg">
+          {errorMessage}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
         {schedules.map((schedule) => (
           <div key={schedule.id} className="bg-white rounded-lg shadow-lg p-6 relative">
+            {/* Checkbox for selecting schedules */}
+            <div className="absolute top-4 left-4">
+              <input
+                type="checkbox"
+                checked={selectedSchedules.has(schedule.id)}
+                onChange={() => handleCheckboxChange(schedule.id)}
+                className="h-5 w-5 text-indigo-600 border-gray-300 rounded"
+              />
+            </div>
+
             <h2 className="text-2xl font-bold text-indigo-500 mb-4">
               {schedule.name}
             </h2>
@@ -140,9 +186,9 @@ export default function HomePage() {
             </button>
 
             <p className="text-gray-600">Major: {schedule.schedule.major}</p>
-            <p className="text-gray-600">Minor: {schedule.schedule.minor}</p>
+            <p className="text-gray-600">Minor: {schedule.schedule.minor || 'None'}</p>
             <p className="text-gray-600">
-              Electives: {schedule.schedule.electives.join(', ')}
+              Electives: {schedule.schedule.electives.length > 0 ? schedule.schedule.electives.join(', ') : 'None'}
             </p>
 
             <button
@@ -155,22 +201,31 @@ export default function HomePage() {
         ))}
       </div>
 
-      <Link href="/schedule/new">
-        <button className="mt-6 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition">
-          Create New Schedule
+      <div className="flex space-x-4 mt-6">
+        <Link href="/schedule/new">
+          <button className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition">
+            Create New Schedule
+          </button>
+        </Link>
+
+        <button
+          onClick={handleCompareSchedules}
+          className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-500 transition"
+        >
+          Compare Schedules
         </button>
-      </Link>
+      </div>
 
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
-  isOpen={isModalOpen}
-  onClose={() => setModalOpen(false)}
-  onConfirm={() => {
-    if (scheduleToDelete) {
-      deleteSchedule(scheduleToDelete);
-    }
-  }}
-/>
+        isOpen={isModalOpen}
+        onClose={() => setModalOpen(false)}
+        onConfirm={() => {
+          if (scheduleToDelete) {
+            deleteSchedule(scheduleToDelete);
+          }
+        }}
+      />
     </div>
   );
 }
