@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ClientPlan from '../../components/ClientPlan';
 
@@ -76,31 +76,37 @@ export default function NewSchedulePage() {
     return `_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   }
 
-  useEffect(() => {
-    const fetchSchedule = async () => {
-      if (scheduleId) {
-        try {
-          const response = await fetch(`/api/getSchedule?id=${scheduleId}`);
-          const data = await response.json();
-          const fetchedSchedule = data.schedule;
+  const isLoading = useRef(false);
 
-          if (fetchedSchedule) {
-            setSchedule(fetchedSchedule);
-            setMajor(fetchedSchedule.schedule.major);
-            setMinor(fetchedSchedule.schedule.minor);
-            setElectives(fetchedSchedule.schedule.electives);
-            console.log("Fetched schedule and set fields successfully");
-          }
-        } catch (error) {
-          console.error('Error fetching schedule:', error);
+useEffect(() => {
+  const fetchSchedule = async () => {
+    if (scheduleId && !isLoading.current) {
+      isLoading.current = true;
+      try {
+        const response = await fetch(`/api/getSchedule?id=${scheduleId}`);
+        const data = await response.json();
+        const fetchedSchedule = data.schedule;
+
+        if (fetchedSchedule) {
+          setSchedule(fetchedSchedule);
+          setMajor(fetchedSchedule.schedule.major);
+          setMinor(fetchedSchedule.schedule.minor);
+          setElectives(fetchedSchedule.schedule.electives);
+          console.log("Fetched schedule and set fields successfully");
         }
+      } catch (error) {
+        console.error('Error fetching schedule:', error);
+      } finally {
+        isLoading.current = false;
       }
-    };
-
-    if (!schedule && scheduleId) {
-      fetchSchedule();
     }
-  }, [scheduleId, schedule]);
+  };
+
+  fetchSchedule();
+}, [scheduleId]);
+
+  
+  
 
   const handleSaveSchedule = () => {
     if (!major || !minor || electives.length === 0) {

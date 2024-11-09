@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import MajorDropdown from './MajorDropdown';
 import ElectivesDropdown from './ElectivesDropdown';
 import MinorsDropdown from './MinorsDropdown';
@@ -124,9 +124,11 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
       // If electives are global, use allElectives
       // If electives are specific to majors, adjust the API accordingly
       setAvailableElectives(allElectives);
-      setElectives([]); // Reset electives when major changes
+      //setElectives([]); // Reset electives when major changes
+      console.log("hi from if statement client plan set electives")
     } else {
       setAvailableElectives([]);
+      console.log("hi from  else statement client plan set electives")
       setElectives([]); // Optionally reset electives if major is deselected
     }
   }, [major, allElectives, setElectives]);
