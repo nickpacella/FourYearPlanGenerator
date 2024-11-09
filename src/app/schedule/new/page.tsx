@@ -112,7 +112,7 @@ export default function NewSchedulePage() {
 
   const saveSchedule = async (scheduleName: string) => {
     const scheduleToSave = {
-      id: scheduleId ? scheduleId : generateRandomId(),
+      id: generateRandomId(),
       name: scheduleName,
       schedule: {
         major,
