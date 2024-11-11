@@ -94,6 +94,7 @@ useEffect(() => {
   fetchAllElectives();
 }, []);
 
+// Fetch all courses on component mount
 useEffect(() => {
   async function fetchAllCourses() {
     try {
@@ -128,10 +129,58 @@ allCourses.forEach((course) => {
     }
   }, [major, minor, electives]);
 
+/**
+   * Function to update an existing schedule by sending updated selections to the backend.
+   */
+const updateSchedule = async () => {
+  if (!scheduleId) {
+    alert('No schedule selected for updating.');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/updateSchedule', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        id: scheduleId,
+        schedule: {
+          major,
+          minor,
+          electives,
+        },
+      }),
+    });
+
+    if (response.ok) {
+      console.log('Schedule updated successfully!');
+    } else {
+      const errorData = await response.json();
+      console.error('Failed to update schedule:', errorData.error);
+    }
+  } catch (error) {
+    console.error('Error updating schedule:', error);
+  }
+};
+
+  /**
+   * Handler for the Update Plan button.
+   * Generates the plan and updates the schedule if scheduleId is present.
+   */
+  const handleUpdatePlan = async () => {
+    await generatePlan();
+    if (scheduleId) {
+      await updateSchedule();
+    }
+  };
+
+
     // Automatically generate initial plan when major is selected
-    useEffect(() => {
-      if (major) {
-        generatePlan();
+  useEffect(() => {
+    if (major) {
+      generatePlan();
       } else {
         // Reset state if major is deselected
         setPlan(null);
@@ -292,7 +341,7 @@ useEffect(() => {
 
           {/* Generate Plan Button */}
         <button
-          onClick={generatePlan}
+          onClick={handleUpdatePlan}
           className="mt-6 w-full px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition"
           disabled={generatingPlan}
         >
