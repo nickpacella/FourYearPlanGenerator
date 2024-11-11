@@ -6,44 +6,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import MajorDropdown from './MajorDropdown';
 import ElectivesDropdown from './ElectivesDropdown';
 import MinorsDropdown from './MinorsDropdown';
+import { Course } from '@/types/Course';
+import 'tailwindcss/tailwind.css';
+
 
 /**
  * Interface defining the props expected by the ClientPlan component.
  */
 interface ClientPlanProps {
-  /**
-   * Function to update the selected major in the parent component.
-   */
   setMajor: (major: string) => void;
-
-  /**
-   * Function to update the selected minor in the parent component.
-   */
   setMinor: (minor: string) => void;
-
-  /**
-   * Function to update the selected electives in the parent component.
-   */
   setElectives: (electives: string[]) => void;
-
-  /**
-   * Currently selected major.
-   */
   major: string;
-
-  /**
-   * Currently selected minor.
-   */
   minor: string;
-
-  /**
-   * Currently selected electives.
-   */
   electives: string[];
-
-  /**
-   * Optional schedule ID, used when updating an existing schedule.
-   */
   scheduleId?: string;
 }
 
@@ -63,75 +39,120 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   electives,
   scheduleId,
 }) => {
-  /**
-   * State to hold available electives fetched from the backend.
-   */
-  const [availableElectives, setAvailableElectives] = useState<string[]>([]);
+  // State to hold available electives fetched from the backend.
 
-  /**
-   * State to manage loading status while fetching electives.
-   */
+  const [highlightedCourses, setHighlightedCourses] = useState<Set<string>>(new Set());
+
+  // Ref to store the previous plan
+  const prevPlanRef = useRef<string[][] | null>(null);
+
+  const [availableElectives, setAvailableElectives] = useState<Course[]>([]);
+
+  const [allElectives, setAllElectives] = useState<Course[]>([]);
+  
+  // State to manage loading status while fetching electives.
   const [loadingElectives, setLoadingElectives] = useState<boolean>(false);
 
-  /**
-   * State to manage any errors that occur during fetching electives.
-   */
+  // State to manage any errors that occur during fetching electives.
   const [errorElectives, setErrorElectives] = useState<string | null>(null);
 
-  /**
-   * State to hold all electives (fetched once on mount).
-   */
-  const [allElectives, setAllElectives] = useState<string[]>([]);
-
-  /**
-   * State to hold the generated academic plan.
-   * The plan is an array of semesters, each containing an array of courses.
-   */
+  // State to hold the generated academic plan.
   const [plan, setPlan] = useState<string[][] | null>(null);
 
-  /**
-   * State to indicate if the plan generation is in progress.
-   */
+  // State to indicate if the plan generation is in progress.
   const [generatingPlan, setGeneratingPlan] = useState<boolean>(false);
 
-  /**
-   * State to hold any error messages during plan generation.
-   */
+  // State to hold any error messages during plan generation.
   const [planError, setPlanError] = useState<string | null>(null);
 
-  // Fetch all electives on component mount
-  useEffect(() => {
-    async function fetchAllElectives() {
-      try {
-        const res = await fetch('/api/getElectives');
-        if (res.ok) {
-          const data = await res.json();
-          setAllElectives(data.electives);
-        } else {
-          console.error('Failed to fetch electives');
-        }
-      } catch (error) {
-        console.error('Error fetching electives:', error);
+  // State to hold the courses completed up to each semester.
+  const [completedCourses, setCompletedCourses] = useState<Set<string>[]>([]);
+
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+
+// Fetch all electives on component mount
+useEffect(() => {
+  async function fetchAllElectives() {
+    try {
+      setLoadingElectives(true);
+      const res = await fetch('/api/getElectives');
+      if (res.ok) {
+        const data = await res.json();
+        setAllElectives(data.electives);
+      } else {
+        console.error('Failed to fetch electives');
+        setErrorElectives('Failed to fetch electives');
       }
+    } catch (error) {
+      console.error('Error fetching electives:', error);
+      setErrorElectives('Error fetching electives');
+    } finally {
+      setLoadingElectives(false);
     }
+  }
 
-    fetchAllElectives();
-  }, []);
+  fetchAllElectives();
+}, []);
 
-  // Update available electives when major changes
+useEffect(() => {
+  async function fetchAllCourses() {
+    try {
+      const res = await fetch('/api/getCourses');
+      if (res.ok) {
+        const data = await res.json();
+        setAllCourses(data.courses);
+      } else {
+        console.error('Failed to fetch all courses');
+      }
+    } catch (error) {
+      console.error('Error fetching all courses:', error);
+    }
+  }
+
+  fetchAllCourses();
+}, []);
+
+// Create a course code to name map
+const courseCodeToNameMap: Record<string, string> = {};
+allCourses.forEach((course) => {
+  courseCodeToNameMap[course.code] = course.name;
+});
+
+
+  /**
+   * useEffect to automatically generate the plan when the component mounts and major is set.
+   */
   useEffect(() => {
-    if (major) {
-      // If electives are global, use allElectives
-      // If electives are specific to majors, adjust the API accordingly
-      setAvailableElectives(allElectives);
-      //setElectives([]); // Reset electives when major changes
-      console.log("hi from if statement client plan set electives")
-    } else {
-      setAvailableElectives([]);
-      console.log("hi from  else statement client plan set electives")
-      setElectives([]); // Optionally reset electives if major is deselected
+    if (major && !plan) {
+      generatePlan();
     }
-  }, [major, allElectives, setElectives]);
+  }, [major, minor, electives]);
+
+    // Automatically generate initial plan when major is selected
+    useEffect(() => {
+      if (major) {
+        generatePlan();
+      } else {
+        // Reset state if major is deselected
+        setPlan(null);
+        setCompletedCourses([]);
+        setAvailableElectives([]);
+      }
+    }, [major, minor]);
+
+
+// Update available electives when major changes
+useEffect(() => {
+  if (major) {
+    // If electives are global, use allElectives
+    // If electives are specific to majors, adjust the API accordingly
+    setAvailableElectives(allElectives);
+  } else {
+    setAvailableElectives([]);
+    setElectives([]); // Optionally reset electives if major is deselected
+  }
+}, [major, allElectives, setElectives]);
+
 
   /**
    * Function to generate the academic plan by sending selected options to the backend.
@@ -153,14 +174,46 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
         },
         body: JSON.stringify({
           major,
-          minor,
-          electives,
+          minor: minor || '',
+          electives: electives || [],
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setPlan(data.plan); // Assuming the backend returns a 'plan' array
+      
+        // Compare the old plan and new plan
+        const oldPlan = prevPlanRef.current || [];
+        const newPlan = data.plan;
+      
+        // Flatten the plans to sets of courses
+        const oldCourses = new Set<string>(oldPlan.flat());
+        const newCourses = new Set<string>(newPlan.flat());
+      
+        // Find the newly added courses
+        const addedCourses = Array.from(newCourses).filter(
+          (course) => !oldCourses.has(course)
+        );
+      
+        // Filter to electives
+        const newlyAddedElectives = addedCourses.filter((course) =>
+          electives.includes(course)
+        );
+      
+        // Set highlightedCourses
+        setHighlightedCourses(new Set(newlyAddedElectives));
+      
+        setPlan(newPlan);
+        prevPlanRef.current = newPlan;
+        // Calculate completed courses up to each semester
+        const completed = calculateCompletedCourses(data.plan);
+        setCompletedCourses(completed);
+
+        setTimeout(() => {
+          setHighlightedCourses(new Set());
+        }, 2000);
+
+
       } else {
         const errorData = await response.json();
         setPlanError(errorData.error || 'Failed to generate the plan.');
@@ -174,50 +227,45 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   };
 
   /**
-   * Function to update an existing schedule by sending updated selections to the backend.
+   * Function to calculate completed courses up to each semester.
    */
-  const updateSchedule = async () => {
-    if (!scheduleId) {
-      alert('No schedule selected for updating.');
-      return;
+  const calculateCompletedCourses = (plan: string[][]): Set<string>[] => {
+    const completedCoursesPerSemester: Set<string>[] = [];
+    const cumulativeCourses = new Set<string>();
+
+    for (const semesterCourses of plan) {
+      semesterCourses.forEach((course) => cumulativeCourses.add(course));
+      completedCoursesPerSemester.push(new Set(cumulativeCourses));
     }
 
-    try {
-      const response = await fetch('/api/updateSchedule', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id: scheduleId,
-          schedule: {
-            major,
-            minor,
-            electives,
-          },
-        }),
-      });
-
-      if (response.ok) {
-        console.log('Schedule updated successfully!');
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to update schedule:', errorData.error);
-      }
-    } catch (error) {
-      console.error('Error updating schedule:', error);
-    }
+    return completedCoursesPerSemester;
   };
 
   /**
-   * Handler for the Update Plan button.
-   * Generates the plan and updates the schedule if scheduleId is present.
+   * Function to check if an elective can be taken based on completed courses.
    */
-  const handleUpdatePlan = async () => {
-    await generatePlan();
-    if (scheduleId) {
-      await updateSchedule();
+  const canTakeElective = (elective: Course, completedCourses: Set<string>[]): boolean => {
+    // Check if there is at least one semester where prerequisites are met
+    for (let i = 0; i < completedCourses.length; i++) {
+      const completed = completedCourses[i];
+      const prerequisitesMet = elective.prerequisites.every((prereq) => completed.has(prereq));
+      if (prerequisitesMet) {
+        return true;
+      }
     }
+    return false;
+  };
+
+  /**
+   * Get the list of electives available based on the completed courses.
+   */
+  const getAvailableElectives = (): Course[] => {
+    if (completedCourses.length === 0) {
+      return [];
+    }
+    return availableElectives.filter((elective) =>
+      canTakeElective(elective, completedCourses)
+    );
   };
 
   return (
@@ -226,26 +274,33 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
         {/* Major Selection */}
         <MajorDropdown onSelect={setMajor} selectedMajor={major} />
 
-        {/* Electives Selection */}
-        <ElectivesDropdown
-          onSelect={setElectives}
-          availableElectives={availableElectives}
-          selectedElectives={electives}
-          loading={loadingElectives}
-          error={errorElectives}
-        />
-
         {/* Minor Selection */}
         <MinorsDropdown onSelect={setMinor} selectedMinor={minor} />
 
-        {/* Update Plan Button */}
+        {/* Electives Selection */}
+        {plan && (
+          <>
+            <ElectivesDropdown
+              onSelect={setElectives}
+              availableElectives={availableElectives}
+              selectedElectives={electives}
+              loading={loadingElectives}
+              error={errorElectives}
+              completedCourses={completedCourses}
+              courseCodeToNameMap={courseCodeToNameMap}
+            />
+
+          {/* Generate Plan Button */}
         <button
-          onClick={handleUpdatePlan}
+          onClick={generatePlan}
           className="mt-6 w-full px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition"
           disabled={generatingPlan}
         >
-          {generatingPlan ? 'Generating & Updating Plan...' : 'Generate & Update Plan'}
+          {generatingPlan ? 'Generating Plan...' : 'Generate Plan'}
         </button>
+
+          </>
+        )}
 
         {/* Error Message */}
         {planError && (
@@ -255,26 +310,35 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
         )}
       </div>
 
-      {/* Display the dynamic schedule on the right */}
+      {/* Right side: Schedule */}
       <div className="w-full md:w-1/2 bg-gray-100 p-4 rounded-md overflow-y-auto max-h-screen">
         <h3 className="text-lg font-semibold mb-4">Generated Schedule</h3>
         {plan ? (
-          plan.map((semester, index) => (
-            <div key={index} className="mb-6">
-              <h4 className="font-bold text-md mb-2">Semester {index + 1}</h4>
-              {semester.length > 0 ? (
-                <ul className="list-disc list-inside">
-                  {semester.map((course, courseIndex) => (
-                    <li key={courseIndex}>{course}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No courses assigned to this semester.</p>
-              )}
-            </div>
-          ))
+          <div className="grid grid-cols-2 gap-4">
+            {plan.map((semester, index) => (
+              <div key={index} className="mb-4">
+                <h4 className="font-bold text-md mb-2">Semester {index + 1}</h4>
+                {semester.length > 0 ? (
+                  <ul className="list-disc list-inside">
+                    {semester.map((course, courseIndex) => (
+                      <li key={courseIndex}
+                      className={`
+                        ${electives.includes(course) ? 'bg-green-300' : ''}
+                        ${highlightedCourses.has(course) ? 'animate-pulseToSolidGreen' : ''}
+                        px-2 py-1 rounded-md
+                        `}
+                      >
+                        {course}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No courses assigned to this semester.</p>
+                )}
+              </div>
+            ))}
+          </div>
         ) : (
-          <p>Select a major, minor, and electives to generate your academic plan.</p>
+          <p>Select a major to generate your academic plan.</p>
         )}
       </div>
     </div>
