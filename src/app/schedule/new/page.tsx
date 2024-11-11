@@ -109,7 +109,7 @@ useEffect(() => {
   
 
   const handleSaveSchedule = () => {
-    if (!major || !minor || electives.length === 0) {
+    if (!major) {
       alert('Please ensure all fields are filled before saving.');
       return;
     }
