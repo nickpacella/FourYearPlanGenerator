@@ -16,9 +16,12 @@
     "@fortawesome/free-regular-svg-icons": "^6.6.0",
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@fortawesome/react-fontawesome": "^0.2.2",
+    "axios": "^1.7.7",
     "i": "^0.3.7",
+    "jsdom": "^25.0.1",
     "mongodb": "^6.9.0",
     "next": "14.2.13",
+    "puppeteer": "^23.7.1",
     "react": "^18",
     "react-dom": "^18"
   },
