@@ -314,17 +314,17 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
     return false;
   };
 
-  /**
-   * Get the list of electives available based on the completed courses.
-   */
-  const getAvailableElectives = (): Course[] => {
-    if (completedCourses.length === 0) {
-      return [];
-    }
-    return availableElectives.filter((elective) =>
-      canTakeElective(elective, completedCourses)
-    );
-  };
+  // /**
+  //  * Get the list of electives available based on the completed courses.
+  //  */
+  // const getAvailableElectives = (): Course[] => {
+  //   if (completedCourses.length === 0) {
+  //     return [];
+  //   }
+  //   return availableElectives.filter((elective) =>
+  //     canTakeElective(elective, completedCourses)
+  //   );
+  // };
 
   return (
     <div className="w-full flex flex-col md:flex-row space-y-8 md:space-y-0 md:space-x-8">
