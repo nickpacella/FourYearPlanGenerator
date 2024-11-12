@@ -141,7 +141,6 @@ export default function HomePage() {
 
     setErrorMessage(null);
     const selectedIds = Array.from(selectedSchedules);
-    // Navigate to compareSchedules page with selected IDs as query params
     router.push(`/compareSchedules?schedules=${selectedIds.join(',')}`);
   };
 
@@ -152,7 +151,6 @@ export default function HomePage() {
       </h1>
       <p className="text-3xl text-gray-700 mb-8">View your saved plans</p>
 
-      {/* Error Message */}
       {errorMessage && (
         <div className="mb-4 p-4 bg-red-200 text-red-800 rounded-lg">
           {errorMessage}
@@ -161,42 +159,46 @@ export default function HomePage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
         {schedules.map((schedule) => (
-          <div key={schedule.id} className="bg-white rounded-lg shadow-lg p-6 relative">
-            {/* Checkbox for selecting schedules */}
-            <div className="absolute top-4 left-4">
-              <input
-                type="checkbox"
-                checked={selectedSchedules.has(schedule.id)}
-                onChange={() => handleCheckboxChange(schedule.id)}
-                className="h-5 w-5 text-indigo-600 border-gray-300 rounded"
-              />
+          <div key={schedule.id} className="bg-white rounded-lg shadow-lg p-6 flex flex-col justify-between h-full">
+            {/* Row container for name, pencil icon, and checkbox */}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-indigo-500">
+                {schedule.name}
+              </h2>
+              <div className="flex items-center space-x-2">
+                <button
+                  className="text-indigo-500 hover:text-indigo-700"
+                  onClick={() => openSchedule(schedule.id)}
+                  aria-label="Edit Schedule"
+                >
+                  <FontAwesomeIcon icon={faPencilAlt} size="lg" />
+                </button>
+                <input
+                  type="checkbox"
+                  checked={selectedSchedules.has(schedule.id)}
+                  onChange={() => handleCheckboxChange(schedule.id)}
+                  className="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
             </div>
 
-            <h2 className="text-2xl font-bold text-indigo-500 mb-4">
-              {schedule.name}
-            </h2>
+            {/* Schedule details */}
+            <div className="mb-4">
+              <p className="text-gray-600">Major: {schedule.schedule.major}</p>
+              <p className="text-gray-600">Minor: {schedule.schedule.minor || 'None'}</p>
+              <p className="text-gray-600">
+                Electives: {schedule.schedule.electives.length > 0 ? schedule.schedule.electives.join(', ') : 'None'}
+              </p>
+            </div>
 
-            {/* Edit icon/button to navigate to the schedule page */}
-            <button
-              className="absolute top-6 right-6 text-indigo-500 hover:text-indigo-700"
-              onClick={() => openSchedule(schedule.id)}
-              aria-label="Edit Schedule"
-            >
-              <FontAwesomeIcon icon={faPencilAlt} size="lg" />
-            </button>
-
-            <p className="text-gray-600">Major: {schedule.schedule.major}</p>
-            <p className="text-gray-600">Minor: {schedule.schedule.minor || 'None'}</p>
-            <p className="text-gray-600">
-              Electives: {schedule.schedule.electives.length > 0 ? schedule.schedule.electives.join(', ') : 'None'}
-            </p>
 
             <button
               onClick={() => handleDeleteClick(schedule.id)}
-              className="mt-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition"
+              className="mt-auto self-start px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition"
             >
               Delete Schedule
             </button>
+
           </div>
         ))}
       </div>
@@ -216,7 +218,6 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
         isOpen={isModalOpen}
         onClose={() => setModalOpen(false)}
