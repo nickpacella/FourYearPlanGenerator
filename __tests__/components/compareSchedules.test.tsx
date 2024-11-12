@@ -1,284 +1,320 @@
 // __tests__/components/compareSchedules.test.tsx
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import CompareSchedulesPage from '../../src/app/compareSchedules/page';
 import { useSearchParams } from 'next/navigation';
 import '@testing-library/jest-dom';
+import userEvent from '@testing-library/user-event';
+import { RouterContext } from 'next/dist/shared/lib/router-context.shared-runtime';
+import { createMockRouter } from '../../src/utils/createMockRouter';
 
-// Mock the useSearchParams hook from next/navigation
+// Mock useSearchParams from next/navigation
 jest.mock('next/navigation', () => ({
   useSearchParams: jest.fn(),
 }));
 
-// Mock the Link component from next/link to render children directly
-jest.mock('next/link', () => {
-  return ({ children, href }: any) => {
-    return <a href={href}>{children}</a>;
-  };
-});
-
 describe('CompareSchedulesPage', () => {
-  // Define mock data for schedules and plans
-  const mockSchedules = [
-    {
-      id: '1',
-      name: 'Schedule One',
-      schedule: {
-        major: 'Computer Science',
-        minor: 'Mathematics',
-        electives: ['Art History', 'Philosophy'],
-      },
-    },
-    {
-      id: '2',
-      name: 'Schedule Two',
-      schedule: {
-        major: 'Biology',
-        minor: '',
-        electives: ['Chemistry', 'Physics'],
-      },
-    },
-  ];
-
-  const mockPlan1 = [
-    ['CS101', 'MATH101', 'ART101'],
-    ['CS102', 'MATH102', 'PHIL101'],
-  ];
-
-  const mockPlan2 = [
-    ['BIO101', 'CHEM101', 'PHY101'],
-    ['BIO102', 'CHEM102', 'PHY102'],
-  ];
+  const mockedUseSearchParams = useSearchParams as jest.Mock;
 
   beforeEach(() => {
-    // Default mock implementation: schedules=1,2
-    (useSearchParams as jest.Mock).mockReturnValue({
-      get: (key: string) => {
-        if (key === 'schedules') return '1,2';
-        return null;
-      },
-    });
-
-    // Mock the global fetch function
-    global.fetch = jest.fn().mockImplementation((url, options) => {
-      // Handle fetching schedules
-      if (url === '/api/getSchedules') {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ schedules: mockSchedules }),
-        });
-      }
-
-      // Handle generating academic plans
-      if (url === '/api/generate-plan' && options?.method === 'POST') {
-        const body = JSON.parse(options.body as string);
-        if (body.major === 'Computer Science') {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({ plan: mockPlan1 }),
-          });
-        }
-        if (body.major === 'Biology') {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({ plan: mockPlan2 }),
-          });
-        }
-        // Simulate failure for unknown majors
-        return Promise.resolve({
-          ok: false,
-          json: async () => ({ error: 'Failed to generate plan.' }),
-        });
-      }
-
-      // Reject unknown endpoints
-      return Promise.reject(new Error('Unknown API endpoint'));
-    });
+    jest.resetAllMocks();
+    // Mock the global fetch
+    global.fetch = jest.fn();
   });
 
   afterEach(() => {
-    // Clear all mocks after each test
-    (global.fetch as jest.Mock).mockClear();
     jest.resetAllMocks();
   });
 
-  it('renders loading state initially', () => {
-    render(<CompareSchedulesPage />);
+  const mockSchedules = {
+    schedules: [
+      {
+        id: '1',
+        name: 'Schedule One',
+        schedule: {
+          major: 'Computer Science',
+          minor: 'Mathematics',
+          electives: ['Art', 'History'],
+        },
+      },
+      {
+        id: '2',
+        name: 'Schedule Two',
+        schedule: {
+          major: 'Biology',
+          minor: '',
+          electives: [],
+        },
+      },
+    ],
+  };
 
-    // Expect the loading message to be in the document
+  const mockPlans = {
+    plan: [
+      ['CS101', 'MATH101'],
+      ['CS102', 'MATH102'],
+      ['CS103', 'HIST201'],
+    ],
+  };
+
+  const renderComponent = () => {
+    const mockRouter = createMockRouter({});
+    return render(
+      <RouterContext.Provider value={mockRouter}>
+        <CompareSchedulesPage />
+      </RouterContext.Provider>
+    );
+  };
+
+  test('displays loading state initially', () => {
+    // Mock search params
+    mockedUseSearchParams.mockReturnValue({
+      get: () => '1,2',
+    });
+
+    // Mock fetch to never resolve to keep loading state
+    (global.fetch as jest.Mock).mockImplementation(() => new Promise(() => {}));
+
+    renderComponent();
+
     expect(screen.getByText(/Loading comparison.../i)).toBeInTheDocument();
   });
 
-  it('renders schedules and their plans correctly', async () => {
-    render(<CompareSchedulesPage />);
-
-    // Wait for schedules to be fetched and displayed
-    await waitFor(() => {
-      expect(screen.getByText('Schedule One')).toBeInTheDocument();
-      expect(screen.getByText('Schedule Two')).toBeInTheDocument();
+  test('displays error when no schedules are selected', async () => {
+    mockedUseSearchParams.mockReturnValue({
+      get: () => null,
     });
 
-    // Wait for academic plans to be generated and displayed
-    await waitFor(() => {
-      // Check for specific course codes to ensure plans are rendered
-      expect(screen.getByText('CS101')).toBeInTheDocument();
-      expect(screen.getByText('CS102')).toBeInTheDocument();
-      expect(screen.getByText('MATH101')).toBeInTheDocument();
-      expect(screen.getByText('MATH102')).toBeInTheDocument();
-      expect(screen.getByText('ART101')).toBeInTheDocument();
-      expect(screen.getByText('PHIL101')).toBeInTheDocument();
+    renderComponent();
 
-      expect(screen.getByText('BIO101')).toBeInTheDocument();
-      expect(screen.getByText('BIO102')).toBeInTheDocument();
-      expect(screen.getByText('CHEM101')).toBeInTheDocument();
-      expect(screen.getByText('CHEM102')).toBeInTheDocument();
-      expect(screen.getByText('PHY101')).toBeInTheDocument();
-      expect(screen.getByText('PHY102')).toBeInTheDocument();
-    });
-  });
-
-  it('shows error message when no schedules are selected', async () => {
-    // Mock useSearchParams to return no schedules
-    (useSearchParams as jest.Mock).mockReturnValue({
-      get: (key: string) => {
-        if (key === 'schedules') return null;
-        return null;
-      },
-    });
-
-    render(<CompareSchedulesPage />);
-
-    // Wait for the error message to appear
     await waitFor(() => {
       expect(screen.getByText(/No schedules selected for comparison./i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Go Back Home/i })).toBeInTheDocument();
     });
-
-    // Check that the "Go Back Home" button is present
-    expect(screen.getByText(/Go Back Home/i)).toBeInTheDocument();
-
-    // Verify that the button links to '/home'
-    const backButton = screen.getByText(/Go Back Home/i).closest('a');
-    expect(backButton).toHaveAttribute('href', '/home');
   });
 
-  it('shows error message when some schedules are not found', async () => {
-    // Modify fetch to return only one schedule instead of two
-    (global.fetch as jest.Mock).mockImplementationOnce((url, options) => {
-      if (url === '/api/getSchedules') {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ schedules: [mockSchedules[0]] }), // Only the first schedule returned
-        });
-      }
-
-      // Handle generating academic plans for the remaining schedules
-      if (url === '/api/generate-plan' && options?.method === 'POST') {
-        const body = JSON.parse(options.body as string);
-        if (body.major === 'Computer Science') {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({ plan: mockPlan1 }),
-          });
-        }
-        if (body.major === 'Biology') {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({ plan: mockPlan2 }),
-          });
-        }
-        return Promise.resolve({
-          ok: false,
-          json: async () => ({ error: 'Failed to generate plan.' }),
-        });
-      }
-
-      // Reject unknown endpoints
-      return Promise.reject(new Error('Unknown API endpoint'));
+  test('handles schedules not found', async () => {
+    mockedUseSearchParams.mockReturnValue({
+      get: () => '1,3', // '3' does not exist
     });
 
-    render(<CompareSchedulesPage />);
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/getSchedules')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockSchedules),
+        });
+      }
+      return Promise.reject(new Error('Unknown endpoint'));
+    });
 
-    // Wait for the error message to appear
+    renderComponent();
+
     await waitFor(() => {
       expect(screen.getByText(/Some selected schedules could not be found./i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Go Back Home/i })).toBeInTheDocument();
     });
   });
 
-  it('shows error message when generating a plan fails', async () => {
-    // Mock fetch to fail generating plan for one of the schedules
-    (global.fetch as jest.Mock).mockImplementationOnce((url, options) => {
-      if (url === '/api/getSchedules') {
+  test('handles fetch failure when generating plans', async () => {
+    mockedUseSearchParams.mockReturnValue({
+      get: () => '1,2',
+    });
+
+    (global.fetch as jest.Mock).mockImplementation((url: string, options?: any) => {
+      if (url.includes('/api/getSchedules')) {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ schedules: mockSchedules }),
+          json: () => Promise.resolve(mockSchedules),
         });
       }
 
-      if (url === '/api/generate-plan' && options?.method === 'POST') {
-        const body = JSON.parse(options.body as string);
-        if (body.major === 'Computer Science') {
+      if (url.includes('/api/generate-plan')) {
+        if (options && options.body) {
+          const body = JSON.parse(options.body);
+          if (body.major === 'Biology') {
+            return Promise.resolve({
+              ok: false,
+              status: 400,
+              json: () => Promise.resolve({ error: 'Plan generation failed.' }),
+            });
+          }
           return Promise.resolve({
             ok: true,
-            json: async () => ({ plan: mockPlan1 }),
+            json: () => Promise.resolve(mockPlans),
           });
         }
-        if (body.major === 'Biology') {
-          return Promise.resolve({
-            ok: false,
-            json: async () => ({ error: 'Failed to generate plan.' }),
-          });
-        }
-        return Promise.resolve({
-          ok: false,
-          json: async () => ({ error: 'Failed to generate plan.' }),
-        });
       }
 
-      // Reject unknown endpoints
-      return Promise.reject(new Error('Unknown API endpoint'));
+      return Promise.reject(new Error('Unknown endpoint'));
     });
 
-    render(<CompareSchedulesPage />);
+    renderComponent();
 
-    // Wait for the error message to appear
     await waitFor(() => {
-      expect(screen.getByText(/Failed to generate plan./i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Failed to generate plan for Schedule Two: Plan generation failed./i)
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Go Back Home/i })).toBeInTheDocument();
     });
   });
 
-  it('displays error message when fetching schedules fails', async () => {
-    // Mock fetch to fail fetching schedules
-    (global.fetch as jest.Mock).mockImplementationOnce((url, options) => {
-      if (url === '/api/getSchedules') {
+  test('renders schedules and plans correctly', async () => {
+    mockedUseSearchParams.mockReturnValue({
+      get: () => '1,2',
+    });
+
+    (global.fetch as jest.Mock).mockImplementation((url: string, options?: any) => {
+      if (url.includes('/api/getSchedules')) {
         return Promise.resolve({
-          ok: false,
-          json: async () => ({ message: 'Failed to fetch schedules.' }),
+          ok: true,
+          json: () => Promise.resolve(mockSchedules),
         });
       }
 
-      // Reject unknown endpoints
-      return Promise.reject(new Error('Unknown API endpoint'));
+      if (url.includes('/api/generate-plan')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockPlans),
+        });
+      }
+
+      return Promise.reject(new Error('Unknown endpoint'));
     });
 
-    render(<CompareSchedulesPage />);
+    renderComponent();
 
-    // Wait for the error message to appear
+    // Wait for the main heading to appear
     await waitFor(() => {
-      expect(screen.getByText(/Failed to fetch schedules./i)).toBeInTheDocument();
+      expect(screen.getByText(/Compare Schedules/i)).toBeInTheDocument();
+    });
+
+    // Check schedule names
+    expect(screen.getByText('Schedule One')).toBeInTheDocument();
+    expect(screen.getByText('Schedule Two')).toBeInTheDocument();
+
+    // Check majors
+    expect(screen.getByText(/Major: Computer Science/i)).toBeInTheDocument();
+    expect(screen.getByText(/Major: Biology/i)).toBeInTheDocument();
+
+    // Check minors
+    expect(screen.getByText(/Minor: Mathematics/i)).toBeInTheDocument();
+    expect(screen.getByText(/Minor: None/i)).toBeInTheDocument();
+
+    // Check electives
+    expect(screen.getByText(/Electives: Art, History/i)).toBeInTheDocument();
+    expect(screen.getByText(/Electives: None/i)).toBeInTheDocument();
+
+    // Check plans
+    const semesterHeaders = screen.getAllByText(/Semester \d+/i);
+    expect(semesterHeaders.length).toBeGreaterThan(0);
+
+    // Check courses
+    expect(screen.getAllByText('CS101')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('MATH101')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('CS102')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('MATH102')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('CS103')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('HIST201')[0]).toBeInTheDocument();
+
+    // Check Back to Home button
+    expect(screen.getByRole('button', { name: /Back to Home/i })).toBeInTheDocument();
+  });
+
+  test('renders "No plan available" when plans are empty', async () => {
+    mockedUseSearchParams.mockReturnValue({
+      get: () => '1',
+    });
+
+    (global.fetch as jest.Mock).mockImplementation((url: string, options?: any) => {
+      if (url.includes('/api/getSchedules')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ schedules: [mockSchedules.schedules[0]] }),
+        });
+      }
+
+      if (url.includes('/api/generate-plan')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ plan: [] }), // Empty plan
+        });
+      }
+
+      return Promise.reject(new Error('Unknown endpoint'));
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText(/No plan available./i)).toBeInTheDocument();
     });
   });
 
-  it('has a "Back to Home" button that navigates to home', async () => {
-    render(<CompareSchedulesPage />);
-
-    // Wait for the "Back to Home" button to appear
-    await waitFor(() => {
-      expect(screen.getByText(/Back to Home/i)).toBeInTheDocument();
+  test('navigates back to home when "Go Back Home" button is clicked', async () => {
+    mockedUseSearchParams.mockReturnValue({
+      get: () => null,
     });
 
-    // Verify that the button links to '/home'
-    const backButton = screen.getByText(/Back to Home/i).closest('a');
-    expect(backButton).toHaveAttribute('href', '/home');
+    const mockRouter = createMockRouter({});
+    render(
+      <RouterContext.Provider value={mockRouter}>
+        <CompareSchedulesPage />
+      </RouterContext.Provider>
+    );
+
+    const button = await screen.findByRole('button', { name: /Go Back Home/i });
+    expect(button).toBeInTheDocument();
+
+    userEvent.click(button);
+
+    // Since the component uses <Link>, we check if the link has the correct href
+    const link = button.closest('a');
+    expect(link).toHaveAttribute('href', '/home');
+  });
+
+  test('navigates back to home when "Back to Home" button is clicked', async () => {
+    mockedUseSearchParams.mockReturnValue({
+      get: () => '1,2',
+    });
+
+    (global.fetch as jest.Mock).mockImplementation((url: string, options?: any) => {
+      if (url.includes('/api/getSchedules')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockSchedules),
+        });
+      }
+
+      if (url.includes('/api/generate-plan')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockPlans),
+        });
+      }
+
+      return Promise.reject(new Error('Unknown endpoint'));
+    });
+
+    const mockRouter = createMockRouter({});
+    render(
+      <RouterContext.Provider value={mockRouter}>
+        <CompareSchedulesPage />
+      </RouterContext.Provider>
+    );
+
+    // Wait for schedules to be rendered
+    await waitFor(() => {
+      expect(screen.getByText(/Compare Schedules/i)).toBeInTheDocument();
+    });
+
+    const button = screen.getByRole('button', { name: /Back to Home/i });
+    expect(button).toBeInTheDocument();
+
+    userEvent.click(button);
+
+    const link = button.closest('a');
+    expect(link).toHaveAttribute('href', '/home');
   });
 });
