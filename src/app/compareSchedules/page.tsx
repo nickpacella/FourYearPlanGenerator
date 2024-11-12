@@ -59,6 +59,7 @@ export default function CompareSchedulesPage() {
       } catch (err: any) {
         console.error(err);
         setError(err.message || 'An error occurred while fetching schedules.');
+        setLoading(false);
       }
     };
 
