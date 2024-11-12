@@ -9,7 +9,6 @@ import MinorsDropdown from './MinorsDropdown';
 import { Course } from '@/types/Course';
 import 'tailwindcss/tailwind.css';
 
-
 /**
  * Interface defining the props expected by the ClientPlan component.
  */
@@ -40,7 +39,6 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   scheduleId,
 }) => {
   // State to hold available electives fetched from the backend.
-
   const [highlightedCourses, setHighlightedCourses] = useState<Set<string>>(new Set());
 
   // Ref to store the previous plan
@@ -70,54 +68,57 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
 
   const [allCourses, setAllCourses] = useState<Course[]>([]);
 
-// Fetch all electives on component mount
-useEffect(() => {
-  async function fetchAllElectives() {
-    try {
-      setLoadingElectives(true);
-      const res = await fetch('/api/getElectives');
-      if (res.ok) {
-        const data = await res.json();
-        setAllElectives(data.electives);
-      } else {
-        console.error('Failed to fetch electives');
-        setErrorElectives('Failed to fetch electives');
+  // State to hold the selected minor courses from MinorsDropdown.
+  const [selectedMinorCourses, setSelectedMinorCourses] = useState<string[]>([]);
+
+  // Fetch all electives on component mount
+  useEffect(() => {
+    async function fetchAllElectives() {
+      try {
+        setLoadingElectives(true);
+        const res = await fetch('/api/getElectives');
+        if (res.ok) {
+          const data = await res.json();
+          setAllElectives(data.electives);
+        } else {
+          console.error('Failed to fetch electives');
+          setErrorElectives('Failed to fetch electives');
+        }
+      } catch (error) {
+        console.error('Error fetching electives:', error);
+        setErrorElectives('Error fetching electives');
+      } finally {
+        setLoadingElectives(false);
       }
-    } catch (error) {
-      console.error('Error fetching electives:', error);
-      setErrorElectives('Error fetching electives');
-    } finally {
-      setLoadingElectives(false);
     }
-  }
 
-  fetchAllElectives();
-}, []);
+    fetchAllElectives();
+  }, []);
 
-// Fetch all courses on component mount
-useEffect(() => {
-  async function fetchAllCourses() {
-    try {
-      const res = await fetch('/api/getCourses');
-      if (res.ok) {
-        const data = await res.json();
-        setAllCourses(data.courses);
-      } else {
-        console.error('Failed to fetch all courses');
+  // Fetch all courses on component mount
+  useEffect(() => {
+    async function fetchAllCourses() {
+      try {
+        const res = await fetch('/api/getCourses');
+        if (res.ok) {
+          const data = await res.json();
+          setAllCourses(data.courses);
+        } else {
+          console.error('Failed to fetch all courses');
+        }
+      } catch (error) {
+        console.error('Error fetching all courses:', error);
       }
-    } catch (error) {
-      console.error('Error fetching all courses:', error);
     }
-  }
 
-  fetchAllCourses();
-}, []);
+    fetchAllCourses();
+  }, []);
 
-// Create a course code to name map
-const courseCodeToNameMap: Record<string, string> = {};
-allCourses.forEach((course) => {
-  courseCodeToNameMap[course.code] = course.name;
-});
+  // Create a course code to name map
+  const courseCodeToNameMap: Record<string, string> = {};
+  allCourses.forEach((course) => {
+    courseCodeToNameMap[course.code] = course.name;
+  });
 
 
   /**
@@ -129,41 +130,41 @@ allCourses.forEach((course) => {
     }
   }, [major, minor, electives]);
 
-/**
+  /**
    * Function to update an existing schedule by sending updated selections to the backend.
    */
-const updateSchedule = async () => {
-  if (!scheduleId) {
-    alert('No schedule selected for updating.');
-    return;
-  }
-
-  try {
-    const response = await fetch('/api/updateSchedule', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: scheduleId,
-        schedule: {
-          major,
-          minor,
-          electives,
-        },
-      }),
-    });
-
-    if (response.ok) {
-      console.log('Schedule updated successfully!');
-    } else {
-      const errorData = await response.json();
-      console.error('Failed to update schedule:', errorData.error);
+  const updateSchedule = async () => {
+    if (!scheduleId) {
+      alert('No schedule selected for updating.');
+      return;
     }
-  } catch (error) {
-    console.error('Error updating schedule:', error);
-  }
-};
+
+    try {
+      const response = await fetch('/api/updateSchedule', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: scheduleId,
+          schedule: {
+            major,
+            minor,
+            electives,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        console.log('Schedule updated successfully!');
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to update schedule:', errorData.error);
+      }
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+    }
+  };
 
   /**
    * Handler for the Update Plan button.
@@ -177,30 +178,30 @@ const updateSchedule = async () => {
   };
 
 
-    // Automatically generate initial plan when major is selected
+  // Automatically generate initial plan when major is selected
   useEffect(() => {
     if (major) {
       generatePlan();
-      } else {
-        // Reset state if major is deselected
-        setPlan(null);
-        setCompletedCourses([]);
-        setAvailableElectives([]);
-      }
-    }, [major, minor]);
+    } else {
+      // Reset state if major is deselected
+      setPlan(null);
+      setCompletedCourses([]);
+      setAvailableElectives([]);
+      setSelectedMinorCourses([]);
+    }
+  }, [major, minor]);
 
-
-// Update available electives when major changes
-useEffect(() => {
-  if (major) {
-    // If electives are global, use allElectives
-    // If electives are specific to majors, adjust the API accordingly
-    setAvailableElectives(allElectives);
-  } else {
-    setAvailableElectives([]);
-    setElectives([]); // Optionally reset electives if major is deselected
-  }
-}, [major, allElectives, setElectives]);
+  // Update available electives when major changes
+  useEffect(() => {
+    if (major) {
+      // If electives are global, use allElectives
+      // If electives are specific to majors, adjust the API accordingly
+      setAvailableElectives(allElectives);
+    } else {
+      setAvailableElectives([]);
+      setElectives([]); // Optionally reset electives if major is deselected
+    }
+  }, [major, allElectives, setElectives]);
 
 
   /**
@@ -231,31 +232,39 @@ useEffect(() => {
       if (response.ok) {
         const data = await response.json();
       
+        // Create a copy of the plan to modify
+        let newPlan: string[][] = [...data.plan];
+
+        // Ensure the plan has at least 7 semesters
+        while (newPlan.length < 7) {
+          newPlan.push([]);
+        }
+
+        // Inject selected minor courses into semester 7 (index 6)
+        if (selectedMinorCourses.length > 0) {
+          newPlan[6] = Array.from(new Set([...newPlan[6], ...selectedMinorCourses]));
+        }
+
         // Compare the old plan and new plan
         const oldPlan = prevPlanRef.current || [];
-        const newPlan = data.plan;
-      
-        // Flatten the plans to sets of courses
-        const oldCourses = new Set<string>(oldPlan.flat());
-        const newCourses = new Set<string>(newPlan.flat());
-      
+        const flatOld = oldPlan.flat();
+        const flatNew = newPlan.flat();
+
         // Find the newly added courses
-        const addedCourses = Array.from(newCourses).filter(
-          (course) => !oldCourses.has(course)
-        );
-      
+        const addedCourses = flatNew.filter((course) => !flatOld.includes(course));
+
         // Filter to electives
         const newlyAddedElectives = addedCourses.filter((course) =>
           electives.includes(course)
         );
-      
+
         // Set highlightedCourses
         setHighlightedCourses(new Set(newlyAddedElectives));
-      
+
         setPlan(newPlan);
         prevPlanRef.current = newPlan;
         // Calculate completed courses up to each semester
-        const completed = calculateCompletedCourses(data.plan);
+        const completed = calculateCompletedCourses(newPlan);
         setCompletedCourses(completed);
 
         setTimeout(() => {
@@ -322,9 +331,13 @@ useEffect(() => {
       <div className="w-full md:w-1/2 space-y-4">
         {/* Major Selection */}
         <MajorDropdown onSelect={setMajor} selectedMajor={major} />
-
+        
         {/* Minor Selection */}
-        <MinorsDropdown onSelect={setMinor} selectedMinor={minor} />
+        <MinorsDropdown
+          onSelect={setMinor}
+          selectedMinor={minor}
+          onSelectedCoursesChange={setSelectedMinorCourses}
+        />
 
         {/* Electives Selection */}
         {plan && (
