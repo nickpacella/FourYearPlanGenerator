@@ -2,7 +2,6 @@ import type { Config } from 'jest'
 import nextJest from 'next/jest.js'
 
 const createJestConfig = nextJest({
-  // path to the Next.js app to load next.config.js and .env files in test environment
   dir: './',
 })
 
@@ -10,16 +9,19 @@ const createJestConfig = nextJest({
 const config: Config = {
   coverageProvider: 'v8',
   testEnvironment: 'jsdom',
-  // include all files in src directory for coverage, excluding specific folders if needed
   collectCoverage: true,
   collectCoverageFrom: [
-    "src/**/*.{js,jsx,ts,tsx}", // adjust if files are elsewhere
-    "!**/node_modules/**",       // exclude node_modules
-    "!**/*.d.ts",                // exclude type definition files
-    "!**/excluded-folder/**",    // add any other exclusions here if necessary
+    "src/app/compareSchedules/page.tsx",
+    "src/app/components/ClientPlan.tsx",
+    "src/app/components/ElectivesDropdown.tsx",
+    "src/app/components/MajorDropdown.tsx",
+    "src/app/components/MinorsDropdown.tsx",
+    "src/app/home/page.tsx",
+    "src/app/schedule/new/page.tsx",
+    "src/app/[[...index]]/page.tsx"
   ],
-  coverageDirectory: "coverage", // optional: specify output directory for coverage reports
-  // setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'], // uncomment if setup file is needed
+  coverageDirectory: "coverage",
+  // setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
 }
 
 export default createJestConfig(config)
