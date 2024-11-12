@@ -231,47 +231,46 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-      
-        // Create a copy of the plan to modify
-        let newPlan: string[][] = [...data.plan];
-
+  
+        // Declare newPlan as a constant
+        const newPlan: string[][] = [...data.plan];
+  
         // Ensure the plan has at least 7 semesters
         while (newPlan.length < 7) {
           newPlan.push([]);
         }
-
+  
         // Inject selected minor courses into semester 7 (index 6)
         if (selectedMinorCourses.length > 0) {
           newPlan[6] = Array.from(new Set([...newPlan[6], ...selectedMinorCourses]));
         }
-
+  
         // Compare the old plan and new plan
         const oldPlan = prevPlanRef.current || [];
         const flatOld = oldPlan.flat();
         const flatNew = newPlan.flat();
-
+  
         // Find the newly added courses
         const addedCourses = flatNew.filter((course) => !flatOld.includes(course));
-
+  
         // Filter to electives
         const newlyAddedElectives = addedCourses.filter((course) =>
           electives.includes(course)
         );
-
+  
         // Set highlightedCourses
         setHighlightedCourses(new Set(newlyAddedElectives));
-
+  
         setPlan(newPlan);
         prevPlanRef.current = newPlan;
         // Calculate completed courses up to each semester
         const completed = calculateCompletedCourses(newPlan);
         setCompletedCourses(completed);
-
+  
         setTimeout(() => {
           setHighlightedCourses(new Set());
         }, 2000);
-
-
+  
       } else {
         const errorData = await response.json();
         setPlanError(errorData.error || 'Failed to generate the plan.');
