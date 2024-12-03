@@ -40,13 +40,11 @@ export default function CompareSchedulesPage() {
 
     const fetchSchedules = async () => {
       try {
-        // Fetch all schedules
         const response = await fetch('/api/getSchedules');
         if (!response.ok) {
           throw new Error('Failed to fetch schedules.');
         }
         const data = await response.json();
-        // Filter schedules based on selected IDs
         const selectedSchedules: Schedule[] = data.schedules.filter((sched: Schedule) =>
           scheduleIds.includes(sched.id)
         );
@@ -73,7 +71,6 @@ export default function CompareSchedulesPage() {
       try {
         const generatedPlans: Plan[] = [];
 
-        // Iterate through each schedule and generate its plan
         for (const schedule of schedules) {
           const response = await fetch('/api/generate-plan', {
             method: 'POST',
@@ -107,6 +104,34 @@ export default function CompareSchedulesPage() {
 
     generateAllPlans();
   }, [schedules]);
+
+  // helper function to classify courses for color-coding
+  const classifyCourse = (course: string, semesterIdx: number, currentPlanIdx: number): 'yellow' | 'red' | 'none' => {
+    const currentPlan = plans[currentPlanIdx];
+  
+    // check if the course exists in other schedules but in different semesters
+    const existsInOtherSemester = plans.some((plan, planIdx) => {
+      if (planIdx === currentPlanIdx) return false; // skip the current schedule
+      return plan.some((semester, idx) => semester.includes(course) && idx !== semesterIdx);
+    });
+  
+    // check if the course doesn't exist in any other schedule
+    const notInOtherSchedules = plans.every((plan, planIdx) => {
+      if (planIdx === currentPlanIdx) return true; // skip the current schedule
+      return plan.every(semester => !semester.includes(course));
+    });
+  
+    if (existsInOtherSemester) {
+      return 'yellow'; // course exists in other schedules but in a different semester
+    }
+  
+    if (notInOtherSchedules) {
+      return 'red'; // course does not exist in any other schedule
+    }
+  
+    return 'none'; // course exists in the same semester in at least one other schedule
+  };
+  
 
   if (loading) {
     return (
@@ -167,9 +192,21 @@ export default function CompareSchedulesPage() {
                         <td key={semesterIdx} className="px-4 py-2 border">
                           {courses.length > 0 ? (
                             <ul className="list-disc list-inside">
-                              {courses.map((course) => (
-                                <li key={course}>{course}</li>
-                              ))}
+                              {courses.map((course) => {
+                              const classification = classifyCourse(course, semesterIdx, index); // pass index of the current schedule
+                              let className = '';
+                              if (classification === 'yellow') {
+                                className = 'bg-yellow-200';
+                              } else if (classification === 'red') {
+                                className = 'bg-red-200';
+                              }
+                              return (
+                                <li key={course} className={className}>
+                                  {course}
+                                </li>
+                              );
+                            })}
+
                             </ul>
                           ) : (
                             <span className="text-gray-500">No courses</span>
