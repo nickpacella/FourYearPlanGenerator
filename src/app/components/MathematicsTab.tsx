@@ -37,6 +37,7 @@ const MathematicsTab: React.FC<MathematicsTabProps> = ({ onSelect, selectedCours
       courses.push(additionalCourse);
     }
 
+    console.log('Selected Mathematics Courses:', courses);
     onSelect(courses);
   }, [pathOption, option1Course, additionalCourse, onSelect]);
 
@@ -70,7 +71,10 @@ const MathematicsTab: React.FC<MathematicsTabProps> = ({ onSelect, selectedCours
               name="pathOption"
               value="option1"
               checked={pathOption === 'option1'}
-              onChange={() => setPathOption('option1')}
+              onChange={() => {
+                setPathOption('option1');
+                setOption1Course(''); // Reset option1Course when path changes
+              }}
             />
             <span className="ml-2">Option 1</span>
           </label>
@@ -110,7 +114,7 @@ const MathematicsTab: React.FC<MathematicsTabProps> = ({ onSelect, selectedCours
               checked={pathOption === 'option2'}
               onChange={() => {
                 setPathOption('option2');
-                setOption1Course('');
+                setOption1Course(''); // Reset option1Course when path changes
               }}
             />
             <span className="ml-2">Option 2</span>

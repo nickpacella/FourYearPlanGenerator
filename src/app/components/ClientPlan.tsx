@@ -13,9 +13,7 @@ import MajorDropdown from './MajorDropdown';
 import MinorsDropdown from './MinorsDropdown';
 import MathematicsTab from './MathematicsTab';
 import ScienceTab from './ScienceTab';
-import IntroEngineeringTab from './IntroEngineeringTab';
 import LiberalArtsCoreTab from './LiberalArtsCoreTab';
-import CSCoreTab from './CSCoreTab';
 import CSDepthTab from './CSDepthTab';
 import CSProjectTab from './CSProjectTab';
 import TechnicalElectivesTab from './TechnicalElectivesTab';
@@ -130,7 +128,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
     'Liberal Arts Core': 'liberalArtsCourses',
     'CS Core': 'csCoreCourses',
     'CS Depth': 'csDepthCourses',
-    'CS Project': 'csProjectCourse',
+    Project: 'csProjectCourse',
     'Technical Electives': 'technicalElectives',
     'Open Electives': 'openElectives',
     'Computers and Ethics': 'computersAndEthicsCourse',
@@ -221,6 +219,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
           );
         }
       });
+      isReconstructing.current = true; // Set flag to prevent setElectives
 
       setCSSelections(reconstructedSelections);
       updateSelectedCourses(reconstructedSelections);
@@ -230,9 +229,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   }, [
     electives,
     allCourses,
-    courseCategoryMap,
-    updateSelectedCourses,
-    categoryToSelectionKey,
+    courseCategoryMap
   ]);
 
   // Handler for the Update Plan button
@@ -366,46 +363,25 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
             </>
           ),
         },
-        {
-          id: 'science',
-          title: 'Science',
-          content: (
-            <>
-              <ScienceTab
-                onSelect={(courses) => {
-                  const newSelections = {
-                    ...csSelections,
-                    scienceCourses: courses,
-                  };
-                  setCSSelections(newSelections);
-                  updateSelectedCourses(newSelections);
-                }}
-                selectedCourses={csSelections.scienceCourses}
-              />
-            </>
-          ),
-        },
-        {
-          id: 'introToEngineering',
-          title: 'Intro to Engineering',
-          content: (
-            <>
-              <IntroEngineeringTab
-                onSelect={(courses) => {
-                  const newSelections = {
-                    ...csSelections,
-                    introEngineeringCourse: courses,
-                  };
-                  setCSSelections(newSelections);
-                  updateSelectedCourses(newSelections);
-                }}
-                selectedCourses={
-                  csSelections.introEngineeringCourse
-                }
-              />
-            </>
-          ),
-        },
+        // ClientPlan.tsx
+{
+  id: 'science',
+  title: 'Science',
+  content: (
+    <>
+      <ScienceTab
+        onSelect={(courses) => {
+          setCSSelections((prev) => ({
+            ...prev,
+            scienceCourses: courses,
+          }));
+          // Avoid calling updateSelectedCourses here if it affects scienceCourses
+        }}
+        selectedCourses={csSelections.scienceCourses}
+      />
+    </>
+  ),
+},
         {
           id: 'liberalArtsCore',
           title: 'Liberal Arts Core',
@@ -421,25 +397,6 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
                   updateSelectedCourses(newSelections);
                 }}
                 selectedCourses={csSelections.liberalArtsCourses}
-              />
-            </>
-          ),
-        },
-        {
-          id: 'csCore',
-          title: 'CS Core',
-          content: (
-            <>
-              <CSCoreTab
-                onSelect={(courses) => {
-                  const newSelections = {
-                    ...csSelections,
-                    csCoreCourses: courses,
-                  };
-                  setCSSelections(newSelections);
-                  updateSelectedCourses(newSelections);
-                }}
-                selectedCourses={csSelections.csCoreCourses}
               />
             </>
           ),
@@ -467,19 +424,19 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
           id: 'csProject',
           title: 'CS Project',
           content: (
-            <>
-              <CSProjectTab
-                onSelect={(courses) => {
-                  const newSelections = {
-                    ...csSelections,
-                    csProjectCourse: courses,
-                  };
-                  setCSSelections(newSelections);
-                  updateSelectedCourses(newSelections);
-                }}
-                selectedCourses={csSelections.csProjectCourse}
-              />
-            </>
+            <CSProjectTab
+              onSelect={(courses) => {
+                setCSSelections((prev) => ({
+                  ...prev,
+                  csProjectCourse: courses,
+                }));
+                updateSelectedCourses({
+                  ...csSelections,
+                  csProjectCourse: courses,
+                });
+              }}
+              selectedCourses={csSelections.csProjectCourse}
+            />
           ),
         },
         {
