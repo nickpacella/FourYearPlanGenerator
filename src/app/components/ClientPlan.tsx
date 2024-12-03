@@ -87,6 +87,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   const [creditHoursRemaining, setCreditHoursRemaining] =
     useState<number>(0);
 
+  // Fetch courses on mount
   useEffect(() => {
     const fetchAllCourses = async () => {
       try {
@@ -361,7 +362,6 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
             </>
           ),
         },
-        // ClientPlan.tsx
         {
           id: 'science',
           title: 'Science',
@@ -456,7 +456,6 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
             </>
           ),
         },
-        // ClientPlan.tsx
         {
           id: 'science',
           title: 'ME Science',
