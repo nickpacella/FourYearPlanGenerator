@@ -22,7 +22,7 @@ const MathematicsTab: React.FC<MathematicsTabProps> = ({ onSelect, selectedCours
 
   // Update selected courses whenever selections change
   useEffect(() => {
-    let courses: string[] = [...requiredCourses];
+    const courses: string[] = [...requiredCourses];
 
     if (pathOption === 'option1') {
       courses.push('MATH 2300');
