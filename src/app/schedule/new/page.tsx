@@ -162,10 +162,8 @@ useEffect(() => {
       <ClientPlan
         setMajor={setMajor}
         setMinor={setMinor}
-        setElectives={setElectives}
         major={major}
         minor={minor}
-        electives={electives}
         scheduleId={scheduleId ?? undefined}
       />
 

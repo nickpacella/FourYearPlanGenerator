@@ -186,9 +186,6 @@ export default function HomePage() {
             <div className="mb-4">
               <p className="text-gray-600">Major: {schedule.schedule.major}</p>
               <p className="text-gray-600">Minor: {schedule.schedule.minor || 'None'}</p>
-              <p className="text-gray-600">
-                Electives: {schedule.schedule.electives.length > 0 ? schedule.schedule.electives.join(', ') : 'None'}
-              </p>
             </div>
 
 
