@@ -50,7 +50,7 @@ const MajorDropdown: React.FC<MajorDropdownProps> = ({ onSelect, selectedMajor }
         </option>
         {/* Replace with actual major options */}
         <option value="Computer Science">Computer Science</option>
-
+        <option value="Mechanical Engineering">Mechanical Engineering</option>
         {/* Add more majors as needed */}
       </select>
     </div>

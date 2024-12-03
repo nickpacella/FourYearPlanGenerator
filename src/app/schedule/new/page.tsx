@@ -87,6 +87,9 @@ export default function NewSchedulePage() {
         isLoading.current = true;
         try {
           const response = await fetch(`/api/getSchedule?id=${scheduleId}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch schedule');
+          }
           const data = await response.json();
           const fetchedSchedule = data.schedule;
 
@@ -108,8 +111,6 @@ export default function NewSchedulePage() {
     fetchSchedule();
   }, [scheduleId]);
 
-  
-
   const handleSaveSchedule = () => {
     if (!major) {
       alert('Please ensure all fields are filled before saving.');
@@ -118,38 +119,49 @@ export default function NewSchedulePage() {
     setModalOpen(true);
   };
 
-  const saveSchedule = async (scheduleName: string) => {
-    const scheduleToSave = {
-      id: generateRandomId(),
-      name: scheduleName,
-      schedule: {
-        major,
-        minor,
-        electives,
-      },
-    };
+// page.tsx
 
-    try {
-      const response = await fetch('/api/saveSchedule', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(scheduleToSave),
-      });
+const saveSchedule = async (scheduleName: string) => {
+  if (!major) {
+    alert('Please ensure all fields are filled before saving.');
+    return;
+  }
 
-      if (response.ok) {
-        setIsSaved(true);
-        console.log('Schedule saved successfully!');
-      } else {
-        console.error('Failed to save schedule');
-      }
-    } catch (error) {
-      console.error('Error saving schedule:', error);
-    } finally {
-      setModalOpen(false);
-    }
+  // Combine all selected courses into one array
+  const allSelectedCourses = electives; // Assuming selectedCourses contains all courses
+
+  const scheduleToSave = {
+    id: generateRandomId(),
+    name: scheduleName,
+    schedule: {
+      major,
+      minor,
+      electives: allSelectedCourses,
+    },
   };
+
+  try {
+    const response = await fetch('/api/saveSchedule', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(scheduleToSave),
+    });
+
+    if (response.ok) {
+      setIsSaved(true);
+      console.log('Schedule saved successfully!');
+    } else {
+      console.error('Failed to save schedule');
+    }
+  } catch (error) {
+    console.error('Error saving schedule:', error);
+  } finally {
+    setModalOpen(false);
+  }
+};
+
 
   const generatePDF = () => {
     const doc = new jsPDF();
@@ -182,17 +194,14 @@ export default function NewSchedulePage() {
       <ClientPlan
         setMajor={setMajor}
         setMinor={setMinor}
-        setElectives={(updatedElectives) => {
-          setElectives(updatedElectives);
-        }}
+        setElectives={setElectives}
         major={major}
         minor={minor}
         electives={electives}
         scheduleId={scheduleId ?? undefined}
       />
 
-      <div className="mt-4 text-indigo-700 font-medium">
-      </div>
+      <div className="mt-4 text-indigo-700 font-medium"></div>
 
       <div className="flex space-x-4 mt-6">
         <button

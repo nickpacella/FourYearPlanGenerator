@@ -14,7 +14,7 @@ type Schedule = {
   };
 };
 
-type Plan = string[][]; // Array of semesters, each containing course codes
+type Plan = string[][];
 
 export default function CompareSchedulesPage() {
   const searchParams = useSearchParams();
@@ -27,7 +27,7 @@ export default function CompareSchedulesPage() {
   useEffect(() => {
     const schedulesParam = searchParams.get('schedules');
     if (schedulesParam) {
-      const ids = schedulesParam.split(',').map(id => id.trim()).filter(id => id.length > 0);
+      const ids = schedulesParam.split(',').map((id) => id.trim()).filter((id) => id.length > 0);
       setScheduleIds(ids);
     } else {
       setError('No schedules selected for comparison.');
@@ -72,7 +72,7 @@ export default function CompareSchedulesPage() {
         const generatedPlans: Plan[] = [];
 
         for (const schedule of schedules) {
-          const response = await fetch('/api/generate-plan', {
+          const response = await fetch('/api/make-plan', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -105,33 +105,29 @@ export default function CompareSchedulesPage() {
     generateAllPlans();
   }, [schedules]);
 
-  // helper function to classify courses for color-coding
   const classifyCourse = (course: string, semesterIdx: number, currentPlanIdx: number): 'yellow' | 'red' | 'none' => {
     const currentPlan = plans[currentPlanIdx];
-  
-    // check if the course exists in other schedules but in different semesters
+
     const existsInOtherSemester = plans.some((plan, planIdx) => {
-      if (planIdx === currentPlanIdx) return false; // skip the current schedule
+      if (planIdx === currentPlanIdx) return false;
       return plan.some((semester, idx) => semester.includes(course) && idx !== semesterIdx);
     });
-  
-    // check if the course doesn't exist in any other schedule
+
     const notInOtherSchedules = plans.every((plan, planIdx) => {
-      if (planIdx === currentPlanIdx) return true; // skip the current schedule
-      return plan.every(semester => !semester.includes(course));
+      if (planIdx === currentPlanIdx) return true;
+      return plan.every((semester) => !semester.includes(course));
     });
-  
+
     if (existsInOtherSemester) {
-      return 'yellow'; // course exists in other schedules but in a different semester
+      return 'yellow';
     }
-  
+
     if (notInOtherSchedules) {
-      return 'red'; // course does not exist in any other schedule
+      return 'red';
     }
-  
-    return 'none'; // course exists in the same semester in at least one other schedule
+
+    return 'none';
   };
-  
 
   if (loading) {
     return (
@@ -172,51 +168,38 @@ export default function CompareSchedulesPage() {
 
             <h3 className="text-xl font-semibold text-indigo-400 mb-2">Academic Plan:</h3>
             {plans[index] && plans[index].length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full table-auto">
-                  <thead>
-                    <tr>
-                      {plans[index].map((_, semesterIdx) => (
-                        <th
-                          key={semesterIdx}
-                          className="px-4 py-2 border text-left text-sm font-medium text-gray-700 bg-gray-200"
-                        >
-                          Semester {semesterIdx + 1}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      {plans[index].map((courses, semesterIdx) => (
-                        <td key={semesterIdx} className="px-4 py-2 border">
-                          {courses.length > 0 ? (
-                            <ul className="list-disc list-inside">
-                              {courses.map((course) => {
-                              const classification = classifyCourse(course, semesterIdx, index); // pass index of the current schedule
-                              let className = '';
-                              if (classification === 'yellow') {
-                                className = 'bg-yellow-200';
-                              } else if (classification === 'red') {
-                                className = 'bg-red-200';
-                              }
-                              return (
-                                <li key={course} className={className}>
-                                  {course}
-                                </li>
-                              );
-                            })}
-
-                            </ul>
-                          ) : (
-                            <span className="text-gray-500">No courses</span>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              <div className="grid grid-cols-4 gap-4">
+              {Array.from({ length: 8 }).map((_, semesterIdx) => (
+                <div
+                  key={semesterIdx}
+                  className="border bg-gray-100 p-2 text-center"
+                  style={{ minHeight: '100px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}
+                >
+                  <strong>Sem {semesterIdx + 1}</strong>
+                  {plans[index]?.[semesterIdx]?.length > 0 ? (
+                    <ul className="list-none mt-2">
+                      {plans[index][semesterIdx].map((course) => {
+                        const classification = classifyCourse(course, semesterIdx, index);
+                        let className = '';
+                        if (classification === 'yellow') {
+                          className = 'bg-yellow-200';
+                        } else if (classification === 'red') {
+                          className = 'bg-red-200';
+                        }
+                        return (
+                          <li key={course} className={className}>
+                            {course}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <span className="text-gray-500 mt-2">No courses</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            
             ) : (
               <p className="text-gray-500">No plan available.</p>
             )}

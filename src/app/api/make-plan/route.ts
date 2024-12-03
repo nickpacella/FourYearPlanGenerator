@@ -3,11 +3,13 @@
 import { NextResponse } from 'next/server';
 import { getMajors } from '@/lib/getMajors';
 import { getCourses } from '@/lib/getCourses';
+import { getMinors } from '@/lib/getMinors';
 import { Course } from '@/types/Course';
 
 interface GeneratePlanRequest {
   major: string;
-  courses: string[];
+  electives?: string[];
+  minor?: string;
 }
 
 /**
@@ -16,7 +18,11 @@ interface GeneratePlanRequest {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { major, courses } = body as GeneratePlanRequest;
+    const { major, electives, minor } = body as GeneratePlanRequest;
+
+    // Provide default values if electives or minor are undefined
+    const electivesList = Array.isArray(electives) ? electives : [];
+    const minorSelection = minor && typeof minor === 'string' ? minor : '';
 
     // Validate incoming data
     if (!major || typeof major !== 'string') {
@@ -26,15 +32,24 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!Array.isArray(courses) || !courses.every((e) => typeof e === 'string')) {
+    if (!Array.isArray(electivesList) || !electivesList.every((e) => typeof e === 'string')) {
       return NextResponse.json(
-        { error: 'Courses should be an array of strings.' },
+        { error: 'Electives should be an array of strings.' },
         { status: 400 }
       );
     }
 
-    // Fetch all majors and courses from the database
-    const [majors, allCourses] = await Promise.all([getMajors(), getCourses()]);
+    if (minorSelection && typeof minorSelection !== 'string') {
+      return NextResponse.json(
+        { error: 'Minor should be a string.' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch all majors, courses, and minors
+    const majors = await getMajors();
+    const courses = await getCourses();
+    const minors = await getMinors();
 
     // Find the selected major
     const selectedMajor = majors.find(
@@ -48,49 +63,69 @@ export async function POST(request: Request) {
       );
     }
 
-    // Extract core courses from the selected major
-    const coreCourses = selectedMajor.coreCourses || [];
+    // Collect core courses
+    const coreCourses = selectedMajor.coreCourses;
 
-    // Combine core courses with user-selected courses
-    const allCoursesSet = new Set<string>([...coreCourses, ...courses]);
-
-    // Convert the set back to an array
-    const combinedCourses = Array.from(allCoursesSet);
-
-    // Map to store course details and prerequisites
-    const prerequisitesMap: Record<string, string[]> = {};
-    const courseDetailsMap: Record<string, Course> = {};
-
-    // Build the prerequisites map for the combined courses
-    combinedCourses.forEach((courseCode) => {
-      const course = allCourses.find((c) => c.code === courseCode);
-      if (course) {
-        prerequisitesMap[course.code] = course.prerequisites || [];
-        courseDetailsMap[course.code] = course;
-      } 
-      // else {
-      //   throw new Error(`Course ${courseCode} not found in the database.`);
-      // }
-    });
-
-    // Perform topological sort to respect prerequisites
-    let sortedCourses: string[];
-    try {
-      sortedCourses = topologicalSort(combinedCourses, prerequisitesMap);
-    } catch (error: any) {
-      console.error(error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    // If a minor is selected, fetch its courses
+    let minorCourses: string[] = [];
+    if (minor) {
+      const selectedMinor = minors.find(
+        (m) => m.name.toLowerCase() === minor.toLowerCase()
+      );
+      if (selectedMinor) {
+        minorCourses = [
+          ...selectedMinor.requiredCourses,
+          ...selectedMinor.electiveCourses,
+        ];
+      } else {
+        return NextResponse.json(
+          { error: 'Selected minor not found.' },
+          { status: 404 }
+        );
+      }
     }
 
-    // Distribute courses across semesters
+    // Combine all courses
+    const allCoursesSet = new Set<string>([
+      ...coreCourses,
+      ...electivesList,
+      ...minorCourses,
+    ]);
+    const allCourses = Array.from(allCoursesSet);
+
+    // Create a map for prerequisites
+    const prerequisitesMap: Record<string, string[]> = {};
+    const courseDetailsMap: Record<string, Course> = {};
+    courses.forEach((course) => {
+      if (allCourses.includes(course.code)) {
+        prerequisitesMap[course.code] = course.prerequisites;
+        courseDetailsMap[course.code] = course;
+      }
+    });
+
+    // Perform topological sort
+    let sortedCourses: string[];
+    try {
+      sortedCourses = topologicalSort(allCourses, prerequisitesMap);
+    } catch (error: any) {
+      console.error(error);
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      );
+    }
+
+    // Distribute courses across semesters using the corrected algorithm
     const plan = distributeCourses(
       sortedCourses,
       prerequisitesMap,
       8, // totalSemesters
-      5  // maxCoursesPerSemester
+      6  // maxCoursesPerSemester
     );
 
-    // Return the generated plan
+    // Log the generated plan for debugging
+    console.log('Generated Plan:', plan);
+
     return NextResponse.json({ plan });
   } catch (error: any) {
     console.error('Error in POST /api/generate-plan:', error);
@@ -139,7 +174,7 @@ function distributeCourses(
   sortedCourses: string[],
   prerequisitesMap: Record<string, string[]>,
   totalSemesters: number = 8,
-  maxCoursesPerSemester: number = 5
+  maxCoursesPerSemester: number = 6
 ): string[][] {
   const plan: string[][] = Array.from({ length: totalSemesters }, () => []);
   const courseSemesterMap: Record<string, number> = {};
@@ -149,7 +184,7 @@ function distributeCourses(
   const totalCourses = sortedCourses.length;
 
   // Determine base semesters to spread courses over
-  const baseSemesters = 5; // Adjust if needed
+  const baseSemesters = 6; // Adjust if needed
 
   // Calculate average courses per semester
   const minCoursesPerSemester = Math.floor(totalCourses / baseSemesters);
