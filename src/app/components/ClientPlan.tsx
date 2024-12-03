@@ -1,7 +1,8 @@
 // ClientPlan.tsx
 
-// Existing imports
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+'use client';
+
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import MajorDropdown from './MajorDropdown';
 import MinorsDropdown from './MinorsDropdown';
 import MathematicsTab from './MathematicsTab';
@@ -20,19 +21,37 @@ import { Course } from '@/types/Course';
 import 'tailwindcss/tailwind.css';
 
 interface ClientPlanProps {
-  setMajor: (major: string) => void;
-  setMinor: (minor: string) => void;
-  major: string;
-  minor: string;
   scheduleId?: string;
+  major: string;
+  setMajor: (major: string) => void;
+  minor: string;
+  setMinor: (minor: string) => void;
+  electives: string[];
+  setElectives: (electives: string[]) => void;
 }
 
+const defaultCsSelections = {
+  mathCourses: [] as string[],
+  scienceCourses: [] as string[],
+  introEngineeringCourse: [] as string[],
+  liberalArtsCourses: [] as string[],
+  csCoreCourses: [] as string[],
+  csDepthCourses: [] as string[],
+  csProjectCourse: [] as string[],
+  technicalElectives: [] as string[],
+  openElectives: [] as string[],
+  computersAndEthicsCourse: [] as string[],
+  writingComponentCourse: [] as string[],
+};
+
 const ClientPlan: React.FC<ClientPlanProps> = ({
-  setMajor,
-  setMinor,
-  major,
-  minor,
   scheduleId,
+  major,
+  setMajor,
+  minor,
+  setMinor,
+  electives,
+  setElectives,
 }) => {
   const [activeTab, setActiveTab] = useState<string>('mathematics');
   const [highlightedCourses, setHighlightedCourses] = useState<Set<string>>(new Set());
@@ -41,68 +60,144 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   const [generatingPlan, setGeneratingPlan] = useState<boolean>(false);
   const [planError, setPlanError] = useState<string | null>(null);
   const [completedCourses, setCompletedCourses] = useState<Set<string>[]>([]);
+  const [csSelections, setCSSelections] = useState(defaultCsSelections);
+
+  // State variables for course selections
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
-  const [remainingCredits, setRemainingCredits] = useState<number>(0); // New state for progress tracker
 
-  const [csSelections, setCSSelections] = useState({
-    mathCourses: [] as string[],
-    scienceCourses: [] as string[],
-    introEngineeringCourse: [] as string[],
-    liberalArtsCourses: [] as string[],
-    csCoreCourses: [] as string[],
-    csDepthCourses: [] as string[],
-    csProjectCourse: [] as string[],
-    technicalElectives: [] as string[],
-    openElectives: [] as string[],
-    computersAndEthicsCourse: [] as string[],
-    writingComponentCourse: [] as string[],
-  });
-
+  // State to hold the selected minor courses from MinorsDropdown.
   const [selectedMinorCourses, setSelectedMinorCourses] = useState<string[]>([]);
 
-  const updateSelectedCourses = useCallback((selections: typeof csSelections) => {
-    const allSelectedCourses = [
-      ...selections.mathCourses,
-      ...selections.scienceCourses,
-      ...selections.introEngineeringCourse,
-      ...selections.liberalArtsCourses,
-      ...selections.csCoreCourses,
-      ...selections.csDepthCourses,
-      ...selections.csProjectCourse,
-      ...selections.technicalElectives,
-      ...selections.openElectives,
-      ...selections.computersAndEthicsCourse,
-      ...selections.writingComponentCourse,
-      ...selectedMinorCourses,
-    ];
-    setSelectedCourses(allSelectedCourses);
-  }, [selectedMinorCourses]);
+  // Fetch all courses data
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
 
-  const calculateRemainingCredits = useCallback(() => {
-    if (!plan) {
-      setRemainingCredits(0);
-      return;
-    }
-    const emptySlots = plan.reduce((count, semester) => {
-      return count + semester.filter((course) => course === '').length;
-    }, 0);
-    setRemainingCredits(emptySlots * 3);
-  }, [plan]);
+  const isReconstructing = useRef(false);
 
-  const handleMathCoursesSelect = useCallback((courses: string[]) => {
-    setCSSelections((prevSelections) => {
-      const newSelections = { ...prevSelections, mathCourses: courses };
-      updateSelectedCourses(newSelections);
-      return newSelections;
+  useEffect(() => {
+    const fetchAllCourses = async () => {
+      try {
+        const response = await fetch('/api/getCourses');
+        if (!response.ok) {
+          throw new Error('Failed to fetch courses data');
+        }
+        const data = await response.json();
+        setAllCourses(data.courses);
+      } catch (error) {
+        console.error('Error fetching all courses:', error);
+      }
+    };
+
+    fetchAllCourses();
+  }, []);
+
+  // Build a mapping from course code to category
+  const courseCategoryMap = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    allCourses.forEach((course) => {
+      map[course.code] = course.categories; // Now mapping to array of categories
     });
-  }, [updateSelectedCourses]);
+    return map;
+  }, [allCourses]);
+  
 
+  // Mapping from category names to csSelections keys
+  const categoryToSelectionKey: Record<string, keyof typeof defaultCsSelections> = {
+    'Mathematics': 'mathCourses',
+    'Science': 'scienceCourses',
+    'Intro to Engineering': 'introEngineeringCourse',
+    'Liberal Arts Core': 'liberalArtsCourses',
+    'CS Core': 'csCoreCourses',
+    'CS Depth': 'csDepthCourses',
+    'CS Project': 'csProjectCourse',
+    'Technical Electives': 'technicalElectives',
+    'Open Electives': 'openElectives',
+    'Computers and Ethics': 'computersAndEthicsCourse',
+    'Writing Component': 'writingComponentCourse',
+    // Add other categories if necessary
+  };
+
+  // Function to update selectedCourses based on csSelections and minor courses
+  const updateSelectedCourses = useCallback(
+    (selections: typeof csSelections) => {
+      const allSelectedCourses = [
+        ...selections.mathCourses,
+        ...selections.scienceCourses,
+        ...selections.introEngineeringCourse,
+        ...selections.liberalArtsCourses,
+        ...selections.csCoreCourses,
+        ...selections.csDepthCourses,
+        ...selections.csProjectCourse,
+        ...selections.technicalElectives,
+        ...selections.openElectives,
+        ...selections.computersAndEthicsCourse,
+        ...selections.writingComponentCourse,
+        ...selectedMinorCourses, // Include minor courses
+      ];
+      setSelectedCourses(allSelectedCourses);
+
+      if (!isReconstructing.current) {
+        setElectives(allSelectedCourses); // Pass electives back to parent
+      }
+
+    },
+    [selectedMinorCourses, setElectives]
+  );
+
+  const handleMathCoursesSelect = useCallback(
+    (courses: string[]) => {
+      setCSSelections((prevSelections) => {
+        const newSelections = { ...prevSelections, mathCourses: courses };
+        updateSelectedCourses(newSelections);
+        return newSelections;
+      });
+    },
+    [updateSelectedCourses]
+  );
+
+  // Add this useEffect to automatically generate the plan when a saved schedule is loaded
+useEffect(() => {
+  if (scheduleId && selectedCourses.length > 0 && !plan && !generatingPlan) {
+    generatePlan();
+  }
+}, [scheduleId, selectedCourses, plan, generatingPlan]);
+
+  useEffect(() => {
+    if (electives && electives.length > 0 && allCourses.length > 0) {
+      isReconstructing.current = true; // Set the flag
+
+      // Reconstruct csSelections
+      const reconstructedSelections = { ...defaultCsSelections };
+      electives.forEach((courseCode: string) => {
+        const categories = courseCategoryMap[courseCode];
+        if (categories && categories.length > 0) {
+          categories.forEach((category) => {
+            const selectionKey = categoryToSelectionKey[category];
+            if (selectionKey && reconstructedSelections[selectionKey]) {
+              if (!reconstructedSelections[selectionKey].includes(courseCode)) {
+                reconstructedSelections[selectionKey].push(courseCode);
+              }
+            } else {
+              console.warn(`Unknown category '${category}' for course ${courseCode}`);
+            }
+          });
+        } else {
+          console.warn(`No categories found for course ${courseCode}`);
+        }
+      });
+
+      setCSSelections(reconstructedSelections);
+      updateSelectedCourses(reconstructedSelections);
+
+      isReconstructing.current = false; // Reset the flag
+    }
+  }, [electives, allCourses, courseCategoryMap, updateSelectedCourses]);
+
+  // Handler for the Update Plan button
   const handleUpdatePlan = async () => {
     await generatePlan();
     if (scheduleId) {
       await updateSchedule();
     }
-    calculateRemainingCredits(); // Update remaining credits when the plan is updated
   };
 
   const updateSchedule = async () => {
@@ -122,8 +217,8 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
           schedule: {
             major,
             minor,
-            csSelections,
-            plan,
+            electives: selectedCourses, // Include electives
+            plan, // Include the generated plan
           },
         }),
       });
@@ -139,34 +234,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
     }
   };
 
-  useEffect(() => {
-    const fetchScheduleData = async () => {
-      if (!scheduleId) return;
-
-      try {
-        const response = await fetch(`/api/getSchedule?id=${scheduleId}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch schedule data');
-        }
-        const data = await response.json();
-
-        const scheduleData = data.schedule;
-        const { major, minor, csSelections: savedCSSelections, plan } = scheduleData;
-
-        setMajor(major);
-        setMinor(minor);
-        setPlan(plan);
-
-        setCSSelections(savedCSSelections);
-        updateSelectedCourses(savedCSSelections);
-      } catch (error) {
-        console.error('Error fetching schedule data:', error);
-      }
-    };
-
-    fetchScheduleData();
-  }, [scheduleId]);
-
+  // Function to generate the academic plan
   const generatePlan = async () => {
     setGeneratingPlan(true);
     setPlanError(null);
@@ -190,6 +258,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
 
         const newPlan: string[][] = [...data.plan];
 
+        // Ensure the plan has at least 8 semesters
         while (newPlan.length < 8) {
           newPlan.push([]);
         }
@@ -199,10 +268,9 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
         setPlan(newPlan);
         prevPlanRef.current = newPlan;
 
+        // Calculate completed courses up to each semester
         const completed = calculateCompletedCourses(newPlan);
         setCompletedCourses(completed);
-
-        calculateRemainingCredits(); // Calculate remaining credits when plan is generated
 
         setTimeout(() => {
           setHighlightedCourses(new Set());
@@ -219,6 +287,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
     }
   };
 
+  // Function to calculate completed courses
   const calculateCompletedCourses = (plan: string[][]): Set<string>[] => {
     const completedCoursesPerSemester: Set<string>[] = [];
     const cumulativeCourses = new Set<string>();
@@ -229,6 +298,209 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
     }
 
     return completedCoursesPerSemester;
+  };
+
+  // Function to get tabs based on the selected major
+  const getTabsForMajor = () => {
+    if (major === 'Computer Science') {
+      return [
+        {
+          id: 'mathematics',
+          title: 'Mathematics',
+          content: (
+            <>
+              <MathematicsTab
+                onSelect={handleMathCoursesSelect}
+                selectedCourses={csSelections.mathCourses}
+              />
+            </>
+          ),
+        },
+        {
+          id: 'science',
+          title: 'Science',
+          content: (
+            <>
+              <ScienceTab
+                onSelect={(courses) => {
+                  const newSelections = { ...csSelections, scienceCourses: courses };
+                  setCSSelections(newSelections);
+                  updateSelectedCourses(newSelections);
+                }}
+                selectedCourses={csSelections.scienceCourses}
+              />
+            </>
+          ),
+        },
+        {
+          id: 'introToEngineering',
+          title: 'Intro to Engineering',
+          content: (
+            <>
+              <IntroEngineeringTab
+                onSelect={(courses) => {
+                  const newSelections = { ...csSelections, introEngineeringCourse: courses };
+                  setCSSelections(newSelections);
+                  updateSelectedCourses(newSelections);
+                }}
+                selectedCourses={csSelections.introEngineeringCourse}
+              />
+            </>
+          ),
+        },
+        {
+          id: 'liberalArtsCore',
+          title: 'Liberal Arts Core',
+          content: (
+            <>
+              <LiberalArtsCoreTab
+                onSelect={(courses) => {
+                  const newSelections = { ...csSelections, liberalArtsCourses: courses };
+                  setCSSelections(newSelections);
+                  updateSelectedCourses(newSelections);
+                }}
+                selectedCourses={csSelections.liberalArtsCourses}
+              />
+            </>
+          ),
+        },
+        {
+          id: 'csCore',
+          title: 'CS Core',
+          content: (
+            <>
+              <CSCoreTab
+                onSelect={(courses) => {
+                  const newSelections = { ...csSelections, csCoreCourses: courses };
+                  setCSSelections(newSelections);
+                  updateSelectedCourses(newSelections);
+                }}
+                selectedCourses={csSelections.csCoreCourses}
+              />
+            </>
+          ),
+        },
+        {
+          id: 'csDepth',
+          title: 'CS Depth',
+          content: (
+            <>
+              <CSDepthTab
+                onSelect={(courses) => {
+                  const newSelections = { ...csSelections, csDepthCourses: courses };
+                  setCSSelections(newSelections);
+                  updateSelectedCourses(newSelections);
+                }}
+                selectedCourses={csSelections.csDepthCourses}
+              />
+            </>
+          ),
+        },
+        {
+          id: 'csProject',
+          title: 'CS Project',
+          content: (
+            <>
+              <CSProjectTab
+                onSelect={(courses) => {
+                  const newSelections = { ...csSelections, csProjectCourse: courses };
+                  setCSSelections(newSelections);
+                  updateSelectedCourses(newSelections);
+                }}
+                selectedCourses={csSelections.csProjectCourse}
+              />
+            </>
+          ),
+        },
+        {
+          id: 'technicalElectives',
+          title: 'Technical Electives',
+          content: (
+            <>
+              <TechnicalElectivesTab
+                onSelect={(courses) => {
+                  const newSelections = { ...csSelections, technicalElectives: courses };
+                  setCSSelections(newSelections);
+                  updateSelectedCourses(newSelections);
+                }}
+                selectedCourses={csSelections.technicalElectives}
+              />
+            </>
+          ),
+        },
+        {
+          id: 'openElectives',
+          title: 'Open Electives',
+          content: (
+            <>
+              <OpenElectivesTab
+                onSelect={(courses) => {
+                  const newSelections = { ...csSelections, openElectives: courses };
+                  setCSSelections(newSelections);
+                  updateSelectedCourses(newSelections);
+                }}
+                selectedCourses={csSelections.openElectives}
+              />
+            </>
+          ),
+        },
+        {
+          id: 'computersAndEthics',
+          title: 'Computers and Ethics',
+          content: (
+            <>
+              <ComputersAndEthicsTab
+                onSelect={(courses) => {
+                  const newSelections = { ...csSelections, computersAndEthicsCourse: courses };
+                  setCSSelections(newSelections);
+                  updateSelectedCourses(newSelections);
+                }}
+                selectedCourses={csSelections.computersAndEthicsCourse}
+              />
+            </>
+          ),
+        },
+        {
+          id: 'writingComponent',
+          title: 'Writing Component',
+          content: (
+            <>
+              <WritingComponentTab
+                onSelect={(courses) => {
+                  const newSelections = { ...csSelections, writingComponentCourse: courses };
+                  setCSSelections(newSelections);
+                  updateSelectedCourses(newSelections);
+                }}
+                selectedCourses={csSelections.writingComponentCourse}
+              />
+            </>
+          ),
+        },
+      ];
+    } else if (major === '') {
+      return [
+        {
+          id: 'requirements',
+          title: 'Requirements',
+          content: <p>Please select a major to see its requirements.</p>,
+        },
+      ];
+    } else {
+      return [
+        {
+          id: 'requirements',
+          title: 'Requirements',
+          content: <p>Major requirements for {major} are not yet implemented.</p>,
+        },
+      ];
+    }
+  };
+
+  const tabs = getTabsForMajor();
+
+  const renderTabContent = () => {
+    const activeTabObj = tabs.find((tab) => tab.id === activeTab);
+    return activeTabObj ? activeTabObj.content : null;
   };
 
   return (
@@ -251,8 +523,9 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
       <div className="w-full flex flex-col md:flex-row md:space-x-8">
         {/* Left Side: Tabs and Content */}
         <div className="w-full md:w-1/2 space-y-4">
+          {/* Tabs */}
           <div className="flex border-b overflow-x-auto">
-            {getTabsForMajor().map((tab) => (
+            {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -266,7 +539,9 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
               </button>
             ))}
           </div>
+          {/* Tab Content */}
           <div className="mt-4">{renderTabContent()}</div>
+          {/* Generate Plan Button */}
           <div className="mt-4">
             <button
               onClick={handleUpdatePlan}
@@ -309,10 +584,6 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
           ) : (
             <p>Select courses to generate your academic plan.</p>
           )}
-          {/* Progress Tracker */}
-          <div className="mt-4">
-            <h4 className="text-lg font-semibold">Credit Hours Remaining: {remainingCredits}</h4>
-          </div>
         </div>
       </div>
     </div>

@@ -3,6 +3,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ClientPlan from '../../components/ClientPlan';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 type Schedule = {
   id: string;
@@ -61,6 +63,7 @@ const NameScheduleModal: React.FC<NameScheduleModalProps> = ({ isOpen, onClose, 
     </div>
   );
 };
+
 export default function NewSchedulePage() {
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [isSaved, setIsSaved] = useState(false);
@@ -78,35 +81,35 @@ export default function NewSchedulePage() {
 
   const isLoading = useRef(false);
 
-useEffect(() => {
-  const fetchSchedule = async () => {
-    if (scheduleId && !isLoading.current) {
-      isLoading.current = true;
-      try {
-        const response = await fetch(`/api/getSchedule?id=${scheduleId}`);
-        const data = await response.json();
-        const fetchedSchedule = data.schedule;
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      if (scheduleId && !isLoading.current) {
+        isLoading.current = true;
+        try {
+          const response = await fetch(`/api/getSchedule?id=${scheduleId}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch schedule');
+          }
+          const data = await response.json();
+          const fetchedSchedule = data.schedule;
 
-        if (fetchedSchedule) {
-          setSchedule(fetchedSchedule);
-          setMajor(fetchedSchedule.schedule.major);
-          setMinor(fetchedSchedule.schedule.minor);
-          setElectives(fetchedSchedule.schedule.electives);
-          console.log("Fetched schedule and set fields successfully");
+          if (fetchedSchedule) {
+            setSchedule(fetchedSchedule);
+            setMajor(fetchedSchedule.schedule.major);
+            setMinor(fetchedSchedule.schedule.minor);
+            setElectives(fetchedSchedule.schedule.electives);
+            console.log('Fetched schedule and set fields successfully');
+          }
+        } catch (error) {
+          console.error('Error fetching schedule:', error);
+        } finally {
+          isLoading.current = false;
         }
-      } catch (error) {
-        console.error('Error fetching schedule:', error);
-      } finally {
-        isLoading.current = false;
       }
-    }
-  };
+    };
 
-  fetchSchedule();
-}, [scheduleId]);
-
-  
-  
+    fetchSchedule();
+  }, [scheduleId]);
 
   const handleSaveSchedule = () => {
     if (!major) {
@@ -116,37 +119,66 @@ useEffect(() => {
     setModalOpen(true);
   };
 
-  const saveSchedule = async (scheduleName: string) => {
-    const scheduleToSave = {
-      id: generateRandomId(),
-      name: scheduleName,
-      schedule: {
-        major,
-        minor,
-        electives,
+// page.tsx
+
+const saveSchedule = async (scheduleName: string) => {
+  if (!major) {
+    alert('Please ensure all fields are filled before saving.');
+    return;
+  }
+
+  // Combine all selected courses into one array
+  const allSelectedCourses = electives; // Assuming selectedCourses contains all courses
+
+  const scheduleToSave = {
+    id: generateRandomId(),
+    name: scheduleName,
+    schedule: {
+      major,
+      minor,
+      electives: allSelectedCourses,
+    },
+  };
+
+  try {
+    const response = await fetch('/api/saveSchedule', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    };
+      body: JSON.stringify(scheduleToSave),
+    });
 
-    try {
-      const response = await fetch('/api/saveSchedule', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(scheduleToSave),
-      });
-
-      if (response.ok) {
-        setIsSaved(true);
-        console.log('Schedule saved successfully!');
-      } else {
-        console.error('Failed to save schedule');
-      }
-    } catch (error) {
-      console.error('Error saving schedule:', error);
-    } finally {
-      setModalOpen(false);
+    if (response.ok) {
+      setIsSaved(true);
+      console.log('Schedule saved successfully!');
+    } else {
+      console.error('Failed to save schedule');
     }
+  } catch (error) {
+    console.error('Error saving schedule:', error);
+  } finally {
+    setModalOpen(false);
+  }
+};
+
+
+  const generatePDF = () => {
+    const doc = new jsPDF();
+
+    const tableData = [
+      ['Major', major],
+      ['Minor', minor],
+      ['Electives', electives.join(', ') || 'None'],
+    ];
+
+    autoTable(doc, {
+      head: [['Field', 'Details']],
+      body: tableData,
+      startY: 30,
+    });
+
+    doc.save(`${schedule ? schedule.name : 'New_Schedule'}.pdf`);
   };
 
   return (
@@ -162,17 +194,29 @@ useEffect(() => {
       <ClientPlan
         setMajor={setMajor}
         setMinor={setMinor}
+        setElectives={setElectives}
         major={major}
         minor={minor}
+        electives={electives}
         scheduleId={scheduleId ?? undefined}
       />
 
-      <button
-        onClick={handleSaveSchedule}
-        className="mt-6 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-500 transition"
-      >
-        Save Schedule
-      </button>
+      <div className="mt-4 text-indigo-700 font-medium"></div>
+
+      <div className="flex space-x-4 mt-6">
+        <button
+          onClick={handleSaveSchedule}
+          className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-500 transition"
+        >
+          Save Schedule
+        </button>
+        <button
+          onClick={generatePDF}
+          className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-500 transition"
+        >
+          Download PDF
+        </button>
+      </div>
 
       {isSaved && (
         <p className="mt-4 text-green-700 font-medium">
@@ -186,6 +230,6 @@ useEffect(() => {
         onClose={() => setModalOpen(false)}
         onSave={saveSchedule}
       />
-    </div>  
+    </div>
   );
 }
