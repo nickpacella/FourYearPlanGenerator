@@ -8,11 +8,10 @@ export async function GET() {
   try {
     const courses: Course[] = await getCourses();
 
-    // Assuming electives are courses categorized as 'Elective' or both 'Core' and 'Elective'
-    const electives = courses
-      .filter(course => course.categories.includes('Elective'))
-      .map(course => course.code);
+    // Filter courses that are categorized as 'Elective'
+    const electives = courses.filter(course => course.categories.includes('Elective'));
 
+    // Return full course data for electives
     return NextResponse.json({ electives });
   } catch (error: any) {
     console.error('Error in GET /api/getElectives:', error);

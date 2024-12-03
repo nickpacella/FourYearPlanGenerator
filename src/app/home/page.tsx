@@ -1,15 +1,12 @@
 "use client";
 
-// Import necessary modules and hooks from React, Next.js, and Clerk
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPencilAlt } from '@fortawesome/free-solid-svg-icons';
 
-/**
- * Type definition for a Schedule object.
- * Ensures consistency in the structure of schedule data.
- */
 type Schedule = {
   id: string;
   name: string;
@@ -20,87 +17,111 @@ type Schedule = {
   };
 };
 
-/**
- * HomePage Component
- * 
- * This component serves as the main dashboard where users can view,
- * create, and manage their schedules. It handles fetching schedules
- * from an API, displaying them, and providing functionalities to
- * navigate to detailed views or delete schedules.
- */
+interface DeleteConfirmationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({ isOpen, onClose, onConfirm }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+      <div className="bg-white rounded-lg p-6 max-w-sm w-full text-center">
+        <h3 className="text-xl font-semibold mb-4">Confirm Deletion</h3>
+        <p className="text-gray-600 mb-6">Are you sure you want to delete this schedule?</p>
+        <div className="flex justify-around">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 transition"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function HomePage() {
-  // State to hold the list of schedules
   const [schedules, setSchedules] = useState<Schedule[]>([]);
-  
-  // State to hold the user's full name, defaults to 'User' if not available
   const [name, setName] = useState<string>('User');
-  
-  // Next.js router for client-side navigation
+  const [isModalOpen, setModalOpen] = useState(false);
+  const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null);
+  const [selectedSchedules, setSelectedSchedules] = useState<Set<string>>(new Set());
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
-  
-  // Authentication hooks from Clerk
   const { isSignedIn } = useAuth();
   const { user } = useUser();
 
-  /**
-   * Effect to update the user's name when the user object changes.
-   * Constructs the full name from firstName and lastName provided by Clerk.
-   */
   useEffect(() => {
     if (user) {
-      // Combine firstName and lastName, trim any extra spaces
       const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
-      
-      // Update the name state; default to 'User' if fullName is empty
       setName(fullName || 'User');
     }
   }, [user]);
 
-  /**
-   * Effect to fetch schedules from the backend API when the component mounts.
-   * It updates the schedules state with the fetched data.
-   * Handles and logs any errors that occur during the fetch.
-   */
+  // Call all scraper routes
+  useEffect(() => {
+    const runScrapers = async () => {
+      const scraperRoutes = [
+        '/api/webScrape/addcscourses',
+        '/api/webScrape/addmecourses',
+        '/api/webScrape/addececourses',
+      ];
+
+      for (const route of scraperRoutes) {
+        try {
+          const response = await fetch(route);
+          if (!response.ok) {
+            console.error(`Failed to execute scraper route: ${route}`);
+          } else {
+            console.log(`Scraper executed successfully for: ${route}`);
+          }
+        } catch (error) {
+          console.error(`Error running scraper for ${route}:`, error);
+        }
+      }
+    };
+
+    runScrapers();
+  }, []); // Runs once when the component mounts
+
   useEffect(() => {
     const fetchSchedules = async () => {
       try {
-        // Make a GET request to the /api/getSchedules endpoint
         const response = await fetch('/api/getSchedules');
-        
-        // Parse the JSON response
+        if (!response.ok) {
+          throw new Error('Failed to fetch schedules.');
+        }
         const data = await response.json();
-        
-        // Update the schedules state with the fetched data
         setSchedules(data.schedules);
       } catch (error) {
-        // Log any errors that occur during the fetch
         console.error('Error fetching schedules:', error);
       }
     };
 
-    // Initiate the fetch operation
     fetchSchedules();
   }, []);
 
-  /**
-   * Function to navigate to the detailed view of a specific schedule.
-   * 
-   * @param scheduleId - The ID of the schedule to view
-   */
   const openSchedule = (scheduleId: string) => {
-    // Navigate to the schedule detail page with the schedule ID as a query parameter
     router.push(`/schedule/new?id=${scheduleId}`);
   };
 
-  /**
-   * Function to delete a specific schedule.
-   * Sends a DELETE request to the backend API and updates the UI upon success.
-   * 
-   * @param scheduleId - The ID of the schedule to delete
-   */
+  const handleDeleteClick = (scheduleId: string) => {
+    setScheduleToDelete(scheduleId);
+    setModalOpen(true);
+  };
+
   const deleteSchedule = async (scheduleId: string) => {
     try {
-      // Make a DELETE request to the /api/deleteSchedule endpoint with the schedule ID
       const response = await fetch(`/api/deleteSchedule`, {
         method: 'DELETE',
         headers: {
@@ -110,76 +131,128 @@ export default function HomePage() {
       });
 
       if (response.ok) {
-        // If deletion is successful, update the schedules state to remove the deleted schedule
         setSchedules((prevSchedules) =>
           prevSchedules.filter((schedule) => schedule.id !== scheduleId)
         );
         console.log('Schedule deleted successfully');
       } else {
-        // If the response is not OK, parse and log the error message
         const errorData = await response.json();
         console.error('Failed to delete schedule:', errorData.message);
       }
     } catch (error) {
-      // Log any errors that occur during the deletion process
       console.error('Error deleting schedule:', error);
+    } finally {
+      setModalOpen(false);
+      setScheduleToDelete(null);
     }
   };
 
+  const handleCheckboxChange = (scheduleId: string) => {
+    setSelectedSchedules((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(scheduleId)) {
+        newSet.delete(scheduleId);
+      } else {
+        newSet.add(scheduleId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleCompareSchedules = () => {
+    if (selectedSchedules.size < 2) {
+      setErrorMessage('Please select at least two schedules to compare.');
+      return;
+    }
+
+    setErrorMessage(null);
+    const selectedIds = Array.from(selectedSchedules);
+    router.push(`/compareSchedules?schedules=${selectedIds.join(',')}`);
+  };
+
   return (
-    // Main container with Tailwind CSS classes for styling and layout
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
-      
-      {/* Welcome message */}
       <h1 className="text-5xl font-extrabold text-indigo-600 mb-2 leading-relaxed">
         {isSignedIn ? `Welcome back, ${name}!` : 'Welcome!'}
       </h1>
-      
-      {/* Subtitle */}
       <p className="text-3xl text-gray-700 mb-8">View your saved plans</p>
 
-      {/* Grid container for displaying schedules */}
+      {errorMessage && (
+        <div className="mb-4 p-4 bg-red-200 text-red-800 rounded-lg">
+          {errorMessage}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
         {schedules.map((schedule) => (
-          // Individual schedule card
-          <div key={schedule.id} className="bg-white rounded-lg shadow-lg p-6">
-            
-            {/* Schedule title: Clickable to navigate to schedule details */}
-            <h2
-              className="text-2xl font-bold text-indigo-500 mb-4 cursor-pointer"
-              onClick={() => openSchedule(schedule.id)} // Open schedule on click
-            >
-              {schedule.name}
-            </h2>
-            
-            {/* Schedule details */}
-            <p className="text-gray-600">Major: {schedule.schedule.major}</p>
-            <p className="text-gray-600">Minor: {schedule.schedule.minor}</p>
-            <p className="text-gray-600">
-              Electives: {schedule.schedule.electives.join(', ')}
-            </p>
-            
-            {/* Delete button for removing the schedule */}
-            <button
-            onClick={() => {
-              if (window.confirm("Are you sure you want to delete this schedule?")) {
-                deleteSchedule(schedule.id); // Trigger deletion if confirmed
-                }
-              }}
-              className="mt-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition"
-              >
-                Delete Schedule
+          <div key={schedule.id} className="bg-white rounded-lg shadow-lg p-6 flex flex-col justify-between h-full">
+            {/* Row container for name, pencil icon, and checkbox */}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-indigo-500">
+                {schedule.name}
+              </h2>
+              <div className="flex items-center space-x-2">
+                <button
+                  className="text-indigo-500 hover:text-indigo-700"
+                  onClick={() => openSchedule(schedule.id)}
+                  aria-label="Edit Schedule"
+                >
+                  <FontAwesomeIcon icon={faPencilAlt} size="lg" />
                 </button>
+                <input
+                  type="checkbox"
+                  checked={selectedSchedules.has(schedule.id)}
+                  onChange={() => handleCheckboxChange(schedule.id)}
+                  className="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* Schedule details */}
+            <div className="mb-4">
+              <p className="text-gray-600">Major: {schedule.schedule.major}</p>
+              <p className="text-gray-600">Minor: {schedule.schedule.minor || 'None'}</p>
+              <p className="text-gray-600">
+                Electives: {schedule.schedule.electives.length > 0 ? schedule.schedule.electives.join(', ') : 'None'}
+              </p>
+            </div>
+
+
+            <button
+              onClick={() => handleDeleteClick(schedule.id)}
+              className="mt-auto self-start px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 transition"
+            >
+              Delete Schedule
+            </button>
+
           </div>
         ))}
       </div>
 
-      {/* Button to navigate to the create new schedule page */}
-      <Link href="/schedule/new">
-        <button className="mt-6 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition">
-          Create New Schedule
+      <div className="flex space-x-4 mt-6">
+        <Link href="/schedule/new">
+          <button className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition">
+            Create New Schedule
+          </button>
+        </Link>
+
+        <button
+          onClick={handleCompareSchedules}
+          className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-500 transition"
+        >
+          Compare Schedules
         </button>
-      </Link>
+      </div>
+
+      <DeleteConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => setModalOpen(false)}
+        onConfirm={() => {
+          if (scheduleToDelete) {
+            deleteSchedule(scheduleToDelete);
+          }
+        }}
+      />
     </div>
   );
 }
