@@ -3,8 +3,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ClientPlan from '../../components/ClientPlan';
-//import jsPDF from 'jspdf';
-//import autoTable from 'jspdf-autotable';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 type Schedule = {
   id: string;
@@ -163,6 +163,24 @@ const saveSchedule = async (scheduleName: string) => {
 };
 
 
+  const generatePDF = () => {
+    const doc = new jsPDF();
+
+    const tableData = [
+      ['Major', major],
+      ['Minor', minor],
+      ['Electives', electives.join(', ') || 'None'],
+    ];
+
+    autoTable(doc, {
+      head: [['Field', 'Details']],
+      body: tableData,
+      startY: 30,
+    });
+
+    doc.save(`${schedule ? schedule.name : 'New_Schedule'}.pdf`);
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
       <h1 className="text-4xl font-extrabold text-indigo-600 mb-4">
@@ -192,14 +210,19 @@ const saveSchedule = async (scheduleName: string) => {
         >
           Save Schedule
         </button>
-        
+        <button
+          onClick={generatePDF}
+          className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-500 transition"
+        >
+          Download PDF
+        </button>
       </div>
 
       {isSaved && (
         <p className="mt-4 text-green-700 font-medium">
           Schedule has been saved successfully!
         </p>
-      )}  
+      )}
 
       {/* Name Schedule Modal */}
       <NameScheduleModal
