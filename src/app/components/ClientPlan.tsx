@@ -2,7 +2,13 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from 'react';
 import MajorDropdown from './MajorDropdown';
 import MinorsDropdown from './MinorsDropdown';
 import MathematicsTab from './MathematicsTab';
@@ -44,6 +50,10 @@ const defaultCsSelections = {
   writingComponentCourse: [] as string[],
 };
 
+// Constants for Progress Tracker
+const COURSES_PER_SEMESTER = 5; // Maximum number of courses per semester
+const CREDIT_HOURS_PER_COURSE = 3; // Credit hours per course
+
 const ClientPlan: React.FC<ClientPlanProps> = ({
   scheduleId,
   major,
@@ -54,24 +64,34 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   setElectives,
 }) => {
   const [activeTab, setActiveTab] = useState<string>('mathematics');
-  const [highlightedCourses, setHighlightedCourses] = useState<Set<string>>(new Set());
+  const [highlightedCourses, setHighlightedCourses] = useState<Set<string>>(
+    new Set()
+  );
   const prevPlanRef = useRef<string[][] | null>(null);
   const [plan, setPlan] = useState<string[][] | null>(null);
   const [generatingPlan, setGeneratingPlan] = useState<boolean>(false);
   const [planError, setPlanError] = useState<string | null>(null);
-  const [completedCourses, setCompletedCourses] = useState<Set<string>[]>([]);
+  const [completedCourses, setCompletedCourses] = useState<Set<string>[]>(
+    []
+  );
   const [csSelections, setCSSelections] = useState(defaultCsSelections);
 
   // State variables for course selections
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
 
   // State to hold the selected minor courses from MinorsDropdown.
-  const [selectedMinorCourses, setSelectedMinorCourses] = useState<string[]>([]);
+  const [selectedMinorCourses, setSelectedMinorCourses] = useState<string[]>(
+    []
+  );
 
   // Fetch all courses data
   const [allCourses, setAllCourses] = useState<Course[]>([]);
 
   const isReconstructing = useRef(false);
+
+  // State for Credit Hours Remaining
+  const [creditHoursRemaining, setCreditHoursRemaining] =
+    useState<number>(0);
 
   useEffect(() => {
     const fetchAllCourses = async () => {
@@ -98,12 +118,14 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
     });
     return map;
   }, [allCourses]);
-  
 
   // Mapping from category names to csSelections keys
-  const categoryToSelectionKey: Record<string, keyof typeof defaultCsSelections> = {
-    'Mathematics': 'mathCourses',
-    'Science': 'scienceCourses',
+  const categoryToSelectionKey: Record<
+    string,
+    keyof typeof defaultCsSelections
+  > = {
+    Mathematics: 'mathCourses',
+    Science: 'scienceCourses',
     'Intro to Engineering': 'introEngineeringCourse',
     'Liberal Arts Core': 'liberalArtsCourses',
     'CS Core': 'csCoreCourses',
@@ -138,7 +160,6 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
       if (!isReconstructing.current) {
         setElectives(allSelectedCourses); // Pass electives back to parent
       }
-
     },
     [selectedMinorCourses, setElectives]
   );
@@ -155,11 +176,16 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   );
 
   // Add this useEffect to automatically generate the plan when a saved schedule is loaded
-useEffect(() => {
-  if (scheduleId && selectedCourses.length > 0 && !plan && !generatingPlan) {
-    generatePlan();
-  }
-}, [scheduleId, selectedCourses, plan, generatingPlan]);
+  useEffect(() => {
+    if (
+      scheduleId &&
+      selectedCourses.length > 0 &&
+      !plan &&
+      !generatingPlan
+    ) {
+      generatePlan();
+    }
+  }, [scheduleId, selectedCourses, plan, generatingPlan]);
 
   useEffect(() => {
     if (electives && electives.length > 0 && allCourses.length > 0) {
@@ -172,16 +198,27 @@ useEffect(() => {
         if (categories && categories.length > 0) {
           categories.forEach((category) => {
             const selectionKey = categoryToSelectionKey[category];
-            if (selectionKey && reconstructedSelections[selectionKey]) {
-              if (!reconstructedSelections[selectionKey].includes(courseCode)) {
+            if (
+              selectionKey &&
+              reconstructedSelections[selectionKey]
+            ) {
+              if (
+                !reconstructedSelections[selectionKey].includes(
+                  courseCode
+                )
+              ) {
                 reconstructedSelections[selectionKey].push(courseCode);
               }
             } else {
-              console.warn(`Unknown category '${category}' for course ${courseCode}`);
+              console.warn(
+                `Unknown category '${category}' for course ${courseCode}`
+              );
             }
           });
         } else {
-          console.warn(`No categories found for course ${courseCode}`);
+          console.warn(
+            `No categories found for course ${courseCode}`
+          );
         }
       });
 
@@ -190,7 +227,13 @@ useEffect(() => {
 
       isReconstructing.current = false; // Reset the flag
     }
-  }, [electives, allCourses, courseCategoryMap, updateSelectedCourses]);
+  }, [
+    electives,
+    allCourses,
+    courseCategoryMap,
+    updateSelectedCourses,
+    categoryToSelectionKey,
+  ]);
 
   // Handler for the Update Plan button
   const handleUpdatePlan = async () => {
@@ -227,7 +270,10 @@ useEffect(() => {
         console.log('Schedule updated successfully!');
       } else {
         const errorData = await response.json();
-        console.error('Failed to update schedule:', errorData.error);
+        console.error(
+          'Failed to update schedule:',
+          errorData.error
+        );
       }
     } catch (error) {
       console.error('Error updating schedule:', error);
@@ -281,14 +327,18 @@ useEffect(() => {
       }
     } catch (error: any) {
       console.error('Error generating the plan:', error);
-      setPlanError('An unexpected error occurred while generating the plan.');
+      setPlanError(
+        'An unexpected error occurred while generating the plan.'
+      );
     } finally {
       setGeneratingPlan(false);
     }
   };
 
   // Function to calculate completed courses
-  const calculateCompletedCourses = (plan: string[][]): Set<string>[] => {
+  const calculateCompletedCourses = (
+    plan: string[][]
+  ): Set<string>[] => {
     const completedCoursesPerSemester: Set<string>[] = [];
     const cumulativeCourses = new Set<string>();
 
@@ -323,7 +373,10 @@ useEffect(() => {
             <>
               <ScienceTab
                 onSelect={(courses) => {
-                  const newSelections = { ...csSelections, scienceCourses: courses };
+                  const newSelections = {
+                    ...csSelections,
+                    scienceCourses: courses,
+                  };
                   setCSSelections(newSelections);
                   updateSelectedCourses(newSelections);
                 }}
@@ -339,11 +392,16 @@ useEffect(() => {
             <>
               <IntroEngineeringTab
                 onSelect={(courses) => {
-                  const newSelections = { ...csSelections, introEngineeringCourse: courses };
+                  const newSelections = {
+                    ...csSelections,
+                    introEngineeringCourse: courses,
+                  };
                   setCSSelections(newSelections);
                   updateSelectedCourses(newSelections);
                 }}
-                selectedCourses={csSelections.introEngineeringCourse}
+                selectedCourses={
+                  csSelections.introEngineeringCourse
+                }
               />
             </>
           ),
@@ -355,7 +413,10 @@ useEffect(() => {
             <>
               <LiberalArtsCoreTab
                 onSelect={(courses) => {
-                  const newSelections = { ...csSelections, liberalArtsCourses: courses };
+                  const newSelections = {
+                    ...csSelections,
+                    liberalArtsCourses: courses,
+                  };
                   setCSSelections(newSelections);
                   updateSelectedCourses(newSelections);
                 }}
@@ -371,7 +432,10 @@ useEffect(() => {
             <>
               <CSCoreTab
                 onSelect={(courses) => {
-                  const newSelections = { ...csSelections, csCoreCourses: courses };
+                  const newSelections = {
+                    ...csSelections,
+                    csCoreCourses: courses,
+                  };
                   setCSSelections(newSelections);
                   updateSelectedCourses(newSelections);
                 }}
@@ -387,7 +451,10 @@ useEffect(() => {
             <>
               <CSDepthTab
                 onSelect={(courses) => {
-                  const newSelections = { ...csSelections, csDepthCourses: courses };
+                  const newSelections = {
+                    ...csSelections,
+                    csDepthCourses: courses,
+                  };
                   setCSSelections(newSelections);
                   updateSelectedCourses(newSelections);
                 }}
@@ -403,7 +470,10 @@ useEffect(() => {
             <>
               <CSProjectTab
                 onSelect={(courses) => {
-                  const newSelections = { ...csSelections, csProjectCourse: courses };
+                  const newSelections = {
+                    ...csSelections,
+                    csProjectCourse: courses,
+                  };
                   setCSSelections(newSelections);
                   updateSelectedCourses(newSelections);
                 }}
@@ -419,7 +489,10 @@ useEffect(() => {
             <>
               <TechnicalElectivesTab
                 onSelect={(courses) => {
-                  const newSelections = { ...csSelections, technicalElectives: courses };
+                  const newSelections = {
+                    ...csSelections,
+                    technicalElectives: courses,
+                  };
                   setCSSelections(newSelections);
                   updateSelectedCourses(newSelections);
                 }}
@@ -435,7 +508,10 @@ useEffect(() => {
             <>
               <OpenElectivesTab
                 onSelect={(courses) => {
-                  const newSelections = { ...csSelections, openElectives: courses };
+                  const newSelections = {
+                    ...csSelections,
+                    openElectives: courses,
+                  };
                   setCSSelections(newSelections);
                   updateSelectedCourses(newSelections);
                 }}
@@ -451,11 +527,16 @@ useEffect(() => {
             <>
               <ComputersAndEthicsTab
                 onSelect={(courses) => {
-                  const newSelections = { ...csSelections, computersAndEthicsCourse: courses };
+                  const newSelections = {
+                    ...csSelections,
+                    computersAndEthicsCourse: courses,
+                  };
                   setCSSelections(newSelections);
                   updateSelectedCourses(newSelections);
                 }}
-                selectedCourses={csSelections.computersAndEthicsCourse}
+                selectedCourses={
+                  csSelections.computersAndEthicsCourse
+                }
               />
             </>
           ),
@@ -467,7 +548,10 @@ useEffect(() => {
             <>
               <WritingComponentTab
                 onSelect={(courses) => {
-                  const newSelections = { ...csSelections, writingComponentCourse: courses };
+                  const newSelections = {
+                    ...csSelections,
+                    writingComponentCourse: courses,
+                  };
                   setCSSelections(newSelections);
                   updateSelectedCourses(newSelections);
                 }}
@@ -482,7 +566,9 @@ useEffect(() => {
         {
           id: 'requirements',
           title: 'Requirements',
-          content: <p>Please select a major to see its requirements.</p>,
+          content: (
+            <p>Please select a major to see its requirements.</p>
+          ),
         },
       ];
     } else {
@@ -490,7 +576,11 @@ useEffect(() => {
         {
           id: 'requirements',
           title: 'Requirements',
-          content: <p>Major requirements for {major} are not yet implemented.</p>,
+          content: (
+            <p>
+              Major requirements for {major} are not yet implemented.
+            </p>
+          ),
         },
       ];
     }
@@ -502,6 +592,22 @@ useEffect(() => {
     const activeTabObj = tabs.find((tab) => tab.id === activeTab);
     return activeTabObj ? activeTabObj.content : null;
   };
+
+  // Effect to calculate Credit Hours Remaining
+  useEffect(() => {
+    if (plan) {
+      const totalSlots = plan.length * COURSES_PER_SEMESTER;
+      const slotsUsed = plan.reduce(
+        (sum, semester) => sum + semester.length,
+        0
+      );
+      const emptySlots = totalSlots - slotsUsed;
+      const creditHours = emptySlots * CREDIT_HOURS_PER_COURSE;
+      setCreditHoursRemaining(creditHours);
+    } else {
+      setCreditHoursRemaining(0);
+    }
+  }, [plan]);
 
   return (
     <div className="w-full space-y-8">
@@ -550,37 +656,53 @@ useEffect(() => {
             >
               {generatingPlan ? 'Generating Plan...' : 'Generate Plan'}
             </button>
-            {planError && <p className="mt-2 text-red-500">{planError}</p>}
+            {planError && (
+              <p className="mt-2 text-red-500">{planError}</p>
+            )}
           </div>
         </div>
 
         {/* Right side: Schedule */}
         <div className="w-full md:w-1/3 bg-gray-100 p-4 rounded-md overflow-y-auto max-h-screen">
-          <h3 className="text-lg font-semibold mb-4">Generated Schedule</h3>
+          <h3 className="text-lg font-semibold mb-4">
+            Generated Schedule
+          </h3>
           {plan ? (
-            <div className="grid grid-cols-1 gap-4">
-              {plan.map((semester, index) => (
-                <div key={index} className="mb-4">
-                  <h4 className="font-bold text-md mb-2">Semester {index + 1}</h4>
-                  {semester.length > 0 ? (
-                    <ul className="list-disc list-inside">
-                      {semester.map((course, courseIndex) => (
-                        <li
-                          key={courseIndex}
-                          className={`px-2 py-1 rounded-md ${
-                            highlightedCourses.has(course) ? 'bg-green-300' : ''
-                          }`}
-                        >
-                          {course}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>No courses assigned to this semester.</p>
-                  )}
-                </div>
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 gap-4">
+                {plan.map((semester, index) => (
+                  <div key={index} className="mb-4">
+                    <h4 className="font-bold text-md mb-2">
+                      Semester {index + 1}
+                    </h4>
+                    {semester.length > 0 ? (
+                      <ul className="list-disc list-inside">
+                        {semester.map((course, courseIndex) => (
+                          <li
+                            key={courseIndex}
+                            className={`px-2 py-1 rounded-md ${
+                              highlightedCourses.has(course)
+                                ? 'bg-green-300'
+                                : ''
+                            }`}
+                          >
+                            {course}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>No courses assigned to this semester.</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {/* Credit Hours Remaining */}
+              <div className="mt-4">
+                <p className="text-md font-semibold">
+                  Credit Hours Remaining: {creditHoursRemaining}
+                </p>
+              </div>
+            </>
           ) : (
             <p>Select courses to generate your academic plan.</p>
           )}
