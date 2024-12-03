@@ -22,6 +22,7 @@
     "axios": "^1.7.7",
     "i": "^0.3.7",
     "jsdom": "^25.0.1",
+    "jspdf-autotable": "^3.8.4",
     "mongodb": "^6.9.0",
     "next": "14.2.13",
     "puppeteer": "^23.7.1",
