@@ -13,13 +13,10 @@ import MajorDropdown from './MajorDropdown';
 import MinorsDropdown from './MinorsDropdown';
 import MathematicsTab from './MathematicsTab';
 import ScienceTab from './ScienceTab';
-import LiberalArtsCoreTab from './LiberalArtsCoreTab';
-import CSDepthTab from './CSDepthTab';
 import CSProjectTab from './CSProjectTab';
 import TechnicalElectivesTab from './TechnicalElectivesTab';
 import OpenElectivesTab from './OpenElectivesTab';
-import ComputersAndEthicsTab from './ComputersAndEthicsTab';
-import WritingComponentTab from './WritingComponentTab';
+
 
 import { Course } from '@/types/Course';
 import 'tailwindcss/tailwind.css';
@@ -331,19 +328,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
       setGeneratingPlan(false);
     }
   };
-  
-  // Add minor course selections logic
-  const handleMinorCoursesSelect = useCallback(
-    (courses: string[]) => {
-      setSelectedMinorCourses(courses);
-      setCSSelections((prevSelections) => {
-        const newSelections = { ...prevSelections };
-        updateSelectedCourses(newSelections); // Update the state with minor selections
-        return newSelections;
-      });
-    },
-    [updateSelectedCourses]
-  );
+
 
   // Function to calculate completed courses
   const calculateCompletedCourses = (
