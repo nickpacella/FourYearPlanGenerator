@@ -5,14 +5,14 @@ async function scrapeCourses() {
     const browser = await puppeteer.launch({ headless: false });
     const page = await browser.newPage();
 
-    await page.goto('https://www.vanderbilt.edu/catalogs/kuali/undergraduate-24-25.php#/content/66577a6007c565001c90c72c', {
+    await page.goto('https://www.vanderbilt.edu/catalogs/kuali/undergraduate-24-25.php#/content/66577a6007c565001c90c731', {
       waitUntil: 'networkidle2',
       timeout: 60000,
     });
 
     // Wait for the curriculum title to confirm dynamic content load
     await page.waitForFunction(
-      () => document.body.innerText.includes("Specimen Curriculum for Computer Engineering"),
+      () => document.body.innerText.includes("Specimen Curriculum for Mechanical Engineering"),
       { timeout: 60000 }
     );
 
