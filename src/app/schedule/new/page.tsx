@@ -199,7 +199,7 @@ const saveSchedule = async (scheduleName: string) => {
         <p className="mt-4 text-green-700 font-medium">
           Schedule has been saved successfully!
         </p>
-      )}
+      )}  
 
       {/* Name Schedule Modal */}
       <NameScheduleModal
