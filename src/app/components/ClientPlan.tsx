@@ -281,7 +281,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   const generatePlan = async () => {
     setGeneratingPlan(true);
     setPlanError(null);
-
+  
     try {
       const response = await fetch('/api/generate-plan', {
         method: 'POST',
@@ -293,28 +293,28 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
           courses: selectedCourses,
         }),
       });
-
+  
       if (response.ok) {
         const data = await response.json();
-
-        console.log('Plan data received:', data);
-
         const newPlan: string[][] = [...data.plan];
-
+  
         // Ensure the plan has at least 8 semesters
         while (newPlan.length < 8) {
           newPlan.push([]);
         }
-
+  
+        // Add the minor courses to the 8th semester
+        if (selectedMinorCourses.length > 0) {
+          newPlan[7] = [...newPlan[7], ...selectedMinorCourses]; // Push minor courses into semester 8
+        }
+  
         setHighlightedCourses(new Set(selectedCourses));
-
         setPlan(newPlan);
         prevPlanRef.current = newPlan;
-
-        // Calculate completed courses up to each semester
+  
         const completed = calculateCompletedCourses(newPlan);
         setCompletedCourses(completed);
-
+  
         setTimeout(() => {
           setHighlightedCourses(new Set());
         }, 2000);
@@ -331,6 +331,19 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
       setGeneratingPlan(false);
     }
   };
+  
+  // Add minor course selections logic
+  const handleMinorCoursesSelect = useCallback(
+    (courses: string[]) => {
+      setSelectedMinorCourses(courses);
+      setCSSelections((prevSelections) => {
+        const newSelections = { ...prevSelections };
+        updateSelectedCourses(newSelections); // Update the state with minor selections
+        return newSelections;
+      });
+    },
+    [updateSelectedCourses]
+  );
 
   // Function to calculate completed courses
   const calculateCompletedCourses = (

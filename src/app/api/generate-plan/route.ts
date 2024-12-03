@@ -67,9 +67,10 @@ export async function POST(request: Request) {
       if (course) {
         prerequisitesMap[course.code] = course.prerequisites || [];
         courseDetailsMap[course.code] = course;
-      } else {
-        throw new Error(`Course ${courseCode} not found in the database.`);
-      }
+      } 
+      // else {
+      //   throw new Error(`Course ${courseCode} not found in the database.`);
+      // }
     });
 
     // Perform topological sort to respect prerequisites
