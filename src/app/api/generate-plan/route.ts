@@ -87,7 +87,7 @@ export async function POST(request: Request) {
       sortedCourses,
       prerequisitesMap,
       8, // totalSemesters
-      6  // maxCoursesPerSemester
+      5  // maxCoursesPerSemester
     );
 
     // Return the generated plan
@@ -139,7 +139,7 @@ function distributeCourses(
   sortedCourses: string[],
   prerequisitesMap: Record<string, string[]>,
   totalSemesters: number = 8,
-  maxCoursesPerSemester: number = 6
+  maxCoursesPerSemester: number = 5
 ): string[][] {
   const plan: string[][] = Array.from({ length: totalSemesters }, () => []);
   const courseSemesterMap: Record<string, number> = {};
@@ -149,7 +149,7 @@ function distributeCourses(
   const totalCourses = sortedCourses.length;
 
   // Determine base semesters to spread courses over
-  const baseSemesters = 6; // Adjust if needed
+  const baseSemesters = 5; // Adjust if needed
 
   // Calculate average courses per semester
   const minCoursesPerSemester = Math.floor(totalCourses / baseSemesters);

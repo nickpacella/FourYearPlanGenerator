@@ -79,7 +79,7 @@ const CSProjectTab: React.FC<CSProjectTabProps> = ({ onSelect, selectedCourses }
                 onChange={() => handleCourseToggle(course.code)}
                 className="form-radio h-4 w-4 text-indigo-600 transition duration-150 ease-in-out"
               />
-              <span className="ml-2">{`${course.code} - ${course.name}`}</span>
+              <span className="ml-2">{`${course.code}`}</span>
             </label>
           </li>
         ))}

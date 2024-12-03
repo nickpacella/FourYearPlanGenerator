@@ -396,44 +396,6 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   ),
 },
         {
-          id: 'liberalArtsCore',
-          title: 'Liberal Arts Core',
-          content: (
-            <>
-              <LiberalArtsCoreTab
-                onSelect={(courses) => {
-                  const newSelections = {
-                    ...csSelections,
-                    liberalArtsCourses: courses,
-                  };
-                  setCSSelections(newSelections);
-                  updateSelectedCourses(newSelections);
-                }}
-                selectedCourses={csSelections.liberalArtsCourses}
-              />
-            </>
-          ),
-        },
-        {
-          id: 'csDepth',
-          title: 'CS Depth',
-          content: (
-            <>
-              <CSDepthTab
-                onSelect={(courses) => {
-                  const newSelections = {
-                    ...csSelections,
-                    csDepthCourses: courses,
-                  };
-                  setCSSelections(newSelections);
-                  updateSelectedCourses(newSelections);
-                }}
-                selectedCourses={csSelections.csDepthCourses}
-              />
-            </>
-          ),
-        },
-        {
           id: 'csProject',
           title: 'CS Project',
           content: (
@@ -490,47 +452,100 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
             </>
           ),
         },
+      ];
+    } else if (major === 'Mechanical Engineering') {
+
+      return [
         {
-          id: 'computersAndEthics',
-          title: 'Computers and Ethics',
+          id: 'mathematics',
+          title: 'ME Mathematics',
           content: (
             <>
-              <ComputersAndEthicsTab
+              <MathematicsTab
+                onSelect={handleMathCoursesSelect}
+                selectedCourses={csSelections.mathCourses}
+              />
+            </>
+          ),
+        },
+        // ClientPlan.tsx
+{
+  id: 'science',
+  title: 'ME Science',
+  content: (
+    <>
+      <ScienceTab
+        onSelect={(courses) => {
+          setCSSelections((prev) => ({
+            ...prev,
+            scienceCourses: courses,
+          }));
+          // Avoid calling updateSelectedCourses here if it affects scienceCourses
+        }}
+        selectedCourses={csSelections.scienceCourses}
+      />
+    </>
+  ),
+},
+        {
+          id: 'csProject',
+          title: 'ME Project',
+          content: (
+            <CSProjectTab
+              onSelect={(courses) => {
+                setCSSelections((prev) => ({
+                  ...prev,
+                  csProjectCourse: courses,
+                }));
+                updateSelectedCourses({
+                  ...csSelections,
+                  csProjectCourse: courses,
+                });
+              }}
+              selectedCourses={csSelections.csProjectCourse}
+            />
+          ),
+        },
+        {
+          id: 'technicalElectives',
+          title: 'ME Technical Electives',
+          content: (
+            <>
+              <TechnicalElectivesTab
                 onSelect={(courses) => {
                   const newSelections = {
                     ...csSelections,
-                    computersAndEthicsCourse: courses,
+                    technicalElectives: courses,
                   };
                   setCSSelections(newSelections);
                   updateSelectedCourses(newSelections);
                 }}
-                selectedCourses={
-                  csSelections.computersAndEthicsCourse
-                }
+                selectedCourses={csSelections.technicalElectives}
               />
             </>
           ),
         },
         {
-          id: 'writingComponent',
-          title: 'Writing Component',
+          id: 'openElectives',
+          title: 'ME Open Electives',
           content: (
             <>
-              <WritingComponentTab
+              <OpenElectivesTab
                 onSelect={(courses) => {
                   const newSelections = {
                     ...csSelections,
-                    writingComponentCourse: courses,
+                    openElectives: courses,
                   };
                   setCSSelections(newSelections);
                   updateSelectedCourses(newSelections);
                 }}
-                selectedCourses={csSelections.writingComponentCourse}
+                selectedCourses={csSelections.openElectives}
               />
             </>
           ),
         },
       ];
+
     } else if (major === '') {
       return [
         {

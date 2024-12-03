@@ -7,11 +7,11 @@ interface OpenElectivesTabProps {
 }
 
 const mockOpenElectives = [
-  'ART 2100 - Introduction to Painting',
-  'MUSC 2200 - Music Theory',
-  'LANG 2300 - Intermediate Spanish',
-  'COMM 2400 - Public Speaking',
-  'ECON 2500 - Microeconomics',
+  'ART 2100',
+  'MUSC 2200',
+  'LANG 2300',
+  'COMM 2400',
+  'ECON 2500',
 ];
 
 const OpenElectivesTab: React.FC<OpenElectivesTabProps> = ({ onSelect, selectedCourses }) => {
