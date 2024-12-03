@@ -68,6 +68,32 @@ export default function HomePage() {
     }
   }, [user]);
 
+  // Call all scraper routes
+  useEffect(() => {
+    const runScrapers = async () => {
+      const scraperRoutes = [
+        '/api/webScrape/addcscourses',
+        '/api/webScrape/addmecourses',
+        '/api/webScrape/addececourses',
+      ];
+
+      for (const route of scraperRoutes) {
+        try {
+          const response = await fetch(route);
+          if (!response.ok) {
+            console.error(`Failed to execute scraper route: ${route}`);
+          } else {
+            console.log(`Scraper executed successfully for: ${route}`);
+          }
+        } catch (error) {
+          console.error(`Error running scraper for ${route}:`, error);
+        }
+      }
+    };
+
+    runScrapers();
+  }, []); // Runs once when the component mounts
+
   useEffect(() => {
     const fetchSchedules = async () => {
       try {
