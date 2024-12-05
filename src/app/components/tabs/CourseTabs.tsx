@@ -53,9 +53,11 @@ const CourseTabs: React.FC<CourseTabsProps> = ({
             <ScienceTab
 
   onSelect={(courses) => {
-    const newSelections = { ...csSelections, scienceCourses: courses };
-    setCSSelections(newSelections);
-    updateSelectedCourses(newSelections);
+    setCSSelections((prevSelections) => {
+      const newSelections = { ...prevSelections, scienceCourses: courses };
+      updateSelectedCourses(newSelections);
+      return newSelections;
+    });
   }}
   selectedCourses={csSelections.scienceCourses}
 />
