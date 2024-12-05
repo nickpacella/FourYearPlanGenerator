@@ -1,4 +1,4 @@
-// ClientPlan.tsx
+// src/app/components/ClientPlan.tsx
 
 'use client';
 
@@ -9,15 +9,13 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
-import MajorDropdown from './MajorDropdown';
-import MinorsDropdown from './MinorsDropdown';
-import MathematicsTab from './MathematicsTab';
-import ScienceTab from './ScienceTab';
-import CSProjectTab from './CSProjectTab';
-import TechnicalElectivesTab from './TechnicalElectivesTab';
-import OpenElectivesTab from './OpenElectivesTab';
+import MajorMinorSelector from './MajorMinorSelector';
+import CourseTabs from './tabs/CourseTabs';
+import GeneratePlanButton from './GeneratePlanButton';
+import ScheduleDisplay from './ScheduleDisplay';
 
 import { Course } from '@/types/Course';
+import { CsSelections } from '@/types/CsSelections'; // Define this type based on your state
 import 'tailwindcss/tailwind.css';
 
 interface ClientPlanProps {
@@ -30,18 +28,18 @@ interface ClientPlanProps {
   setElectives: (electives: string[]) => void;
 }
 
-const defaultCsSelections = {
-  mathCourses: [] as string[],
-  scienceCourses: [] as string[],
-  introEngineeringCourse: [] as string[],
-  liberalArtsCourses: [] as string[],
-  csCoreCourses: [] as string[],
-  csDepthCourses: [] as string[],
-  csProjectCourse: [] as string[],
-  technicalElectives: [] as string[],
-  openElectives: [] as string[],
-  computersAndEthicsCourse: [] as string[],
-  writingComponentCourse: [] as string[],
+const defaultCsSelections: CsSelections = {
+  mathCourses: [],
+  scienceCourses: [],
+  introEngineeringCourse: [],
+  liberalArtsCourses: [],
+  csCoreCourses: [],
+  csDepthCourses: [],
+  csProjectCourse: [],
+  technicalElectives: [],
+  openElectives: [],
+  computersAndEthicsCourse: [],
+  writingComponentCourse: [],
 };
 
 // Constants for Progress Tracker
@@ -65,10 +63,8 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   const [plan, setPlan] = useState<string[][] | null>(null);
   const [generatingPlan, setGeneratingPlan] = useState<boolean>(false);
   const [planError, setPlanError] = useState<string | null>(null);
-  const [completedCourses, setCompletedCourses] = useState<Set<string>[]>(
-    []
-  );
-  const [csSelections, setCSSelections] = useState(defaultCsSelections);
+  const [completedCourses, setCompletedCourses] = useState<Set<string>[]>([]);
+  const [csSelections, setCSSelections] = useState<CsSelections>(defaultCsSelections);
 
   // State variables for course selections
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
@@ -115,7 +111,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   }, [allCourses]);
 
   // Mapping from category names to csSelections keys
-  const categoryToSelectionKey = useMemo<Record<string, keyof typeof defaultCsSelections>>(
+  const categoryToSelectionKey = useMemo<Record<string, keyof CsSelections>>(
     () => ({
       Mathematics: 'mathCourses',
       Science: 'scienceCourses',
@@ -135,7 +131,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
 
   // Function to update selectedCourses based on csSelections and minor courses
   const updateSelectedCourses = useCallback(
-    (selections: typeof csSelections) => {
+    (selections: CsSelections) => {
       const allSelectedCourses = [
         ...selections.mathCourses,
         ...selections.scienceCourses,
@@ -163,6 +159,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
     (courses: string[]) => {
       setCSSelections((prevSelections) => {
         const newSelections = { ...prevSelections, mathCourses: courses };
+        console.log('Updated mathCourses:', courses); // Log updated mathCourses
         updateSelectedCourses(newSelections);
         return newSelections;
       });
@@ -174,7 +171,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   const generatePlan = useCallback(async () => {
     setGeneratingPlan(true);
     setPlanError(null);
-  
+
     try {
       const response = await fetch('/api/generate-plan', {
         method: 'POST',
@@ -186,31 +183,27 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
           courses: selectedCourses,
         }),
       });
-  
+
       if (response.ok) {
         const data = await response.json();
         const newPlan: string[][] = [...data.plan];
-  
+
         // Ensure the plan has at least 8 semesters
         while (newPlan.length < 8) {
           newPlan.push([]);
         }
-  
+
         // Add the minor courses to the 8th semester
         if (selectedMinorCourses.length > 0) {
           newPlan[7] = [...newPlan[7], ...selectedMinorCourses]; // Push minor courses into semester 8
         }
-  
+
         setHighlightedCourses(new Set(selectedCourses));
         setPlan(newPlan);
         prevPlanRef.current = newPlan;
-  
+
         const completed = calculateCompletedCourses(newPlan);
         setCompletedCourses(completed);
-  
-        setTimeout(() => {
-          setHighlightedCourses(new Set());
-        }, 2000);
       } else {
         const errorData = await response.json();
         setPlanError(errorData.error || 'Failed to generate the plan.');
@@ -283,7 +276,7 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
     allCourses,
     courseCategoryMap,
     categoryToSelectionKey,
-    updateSelectedCourses
+    updateSelectedCourses,
   ]);
 
   // Handler for the Update Plan button
@@ -346,234 +339,6 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
     return completedCoursesPerSemester;
   };
 
-  // Function to get tabs based on the selected major
-  const getTabsForMajor = useCallback(() => {
-    if (major === 'Computer Science') {
-      return [
-        {
-          id: 'mathematics',
-          title: 'Mathematics',
-          content: (
-            <>
-              <MathematicsTab
-                onSelect={handleMathCoursesSelect}
-                selectedCourses={csSelections.mathCourses}
-              />
-            </>
-          ),
-        },
-        {
-          id: 'science',
-          title: 'Science',
-          content: (
-            <>
-              <ScienceTab
-                onSelect={(courses) => {
-                  setCSSelections((prev) => ({
-                    ...prev,
-                    scienceCourses: courses,
-                  }));
-                  updateSelectedCourses({
-                    ...csSelections,
-                    scienceCourses: courses,
-                  });
-                }}
-                selectedCourses={csSelections.scienceCourses}
-              />
-            </>
-          ),
-        },
-        {
-          id: 'csProject',
-          title: 'CS Project',
-          content: (
-            <CSProjectTab
-              onSelect={(courses) => {
-                setCSSelections((prev) => ({
-                  ...prev,
-                  csProjectCourse: courses,
-                }));
-                updateSelectedCourses({
-                  ...csSelections,
-                  csProjectCourse: courses,
-                });
-              }}
-              selectedCourses={csSelections.csProjectCourse}
-            />
-          ),
-        },
-        {
-          id: 'technicalElectives',
-          title: 'Technical Electives',
-          content: (
-            <>
-              <TechnicalElectivesTab
-                onSelect={(courses) => {
-                  const newSelections = {
-                    ...csSelections,
-                    technicalElectives: courses,
-                  };
-                  setCSSelections(newSelections);
-                  updateSelectedCourses(newSelections);
-                }}
-                selectedCourses={csSelections.technicalElectives}
-              />
-            </>
-          ),
-        },
-        {
-          id: 'openElectives',
-          title: 'Open Electives',
-          content: (
-            <>
-              <OpenElectivesTab
-                onSelect={(courses) => {
-                  const newSelections = {
-                    ...csSelections,
-                    openElectives: courses,
-                  };
-                  setCSSelections(newSelections);
-                  updateSelectedCourses(newSelections);
-                }}
-                selectedCourses={csSelections.openElectives}
-              />
-            </>
-          ),
-        },
-      ];
-    } else if (major === 'Mechanical Engineering') {
-
-      return [
-        {
-          id: 'mathematics',
-          title: 'ME Mathematics',
-          content: (
-            <>
-              <MathematicsTab
-                onSelect={handleMathCoursesSelect}
-                selectedCourses={csSelections.mathCourses}
-              />
-            </>
-          ),
-        },
-        {
-          id: 'science',
-          title: 'ME Science',
-          content: (
-            <>
-              <ScienceTab
-                onSelect={(courses) => {
-                  setCSSelections((prev) => ({
-                    ...prev,
-                    scienceCourses: courses,
-                  }));
-                  updateSelectedCourses({
-                    ...csSelections,
-                    scienceCourses: courses,
-                  });
-                }}
-                selectedCourses={csSelections.scienceCourses}
-              />
-            </>
-          ),
-        },
-        {
-          id: 'csProject',
-          title: 'ME Project',
-          content: (
-            <CSProjectTab
-              onSelect={(courses) => {
-                setCSSelections((prev) => ({
-                  ...prev,
-                  csProjectCourse: courses,
-                }));
-                updateSelectedCourses({
-                  ...csSelections,
-                  csProjectCourse: courses,
-                });
-              }}
-              selectedCourses={csSelections.csProjectCourse}
-            />
-          ),
-        },
-        {
-          id: 'technicalElectives',
-          title: 'ME Technical Electives',
-          content: (
-            <>
-              <TechnicalElectivesTab
-                onSelect={(courses) => {
-                  const newSelections = {
-                    ...csSelections,
-                    technicalElectives: courses,
-                  };
-                  setCSSelections(newSelections);
-                  updateSelectedCourses(newSelections);
-                }}
-                selectedCourses={csSelections.technicalElectives}
-              />
-            </>
-          ),
-        },
-        {
-          id: 'openElectives',
-          title: 'ME Open Electives',
-          content: (
-            <>
-              <OpenElectivesTab
-                onSelect={(courses) => {
-                  const newSelections = {
-                    ...csSelections,
-                    openElectives: courses,
-                  };
-                  setCSSelections(newSelections);
-                  updateSelectedCourses(newSelections);
-                }}
-                selectedCourses={csSelections.openElectives}
-              />
-            </>
-          ),
-        },
-      ];
-
-    } else if (major === '') {
-      return [
-        {
-          id: 'requirements',
-          title: 'Requirements',
-          content: (
-            <p>Please select a major to see its requirements.</p>
-          ),
-        },
-      ];
-    } else {
-      return [
-        {
-          id: 'requirements',
-          title: 'Requirements',
-          content: (
-            <p>
-              Major requirements for {major} are not yet implemented.
-            </p>
-          ),
-        },
-      ];
-    }
-  }, [
-    major,
-    handleMathCoursesSelect,
-    csSelections,
-    setCSSelections,
-    updateSelectedCourses,
-  ]);
-
-  const tabs = useMemo(() => getTabsForMajor(), [getTabsForMajor]);
-
-  const renderTabContent = useCallback(() => {
-    const activeTabObj = tabs.find((tab) => tab.id === activeTab);
-    return activeTabObj ? activeTabObj.content : null;
-  }, [tabs, activeTab]);
-
   // Effect to calculate Credit Hours Remaining
   useEffect(() => {
     if (plan) {
@@ -593,103 +358,42 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   return (
     <div className="w-full space-y-8">
       {/* Major and Minor Selection at the top */}
-      <div className="w-full flex flex-col md:flex-row md:space-x-8">
-        <div className="w-full md:w-1/2 space-y-4">
-          <MajorDropdown onSelect={setMajor} selectedMajor={major} />
-        </div>
-        <div className="w-full md:w-1/2 space-y-4">
-          <MinorsDropdown
-            onSelect={setMinor}
-            selectedMinor={minor}
-            onSelectedCoursesChange={setSelectedMinorCourses}
-          />
-        </div>
-      </div>
+      <MajorMinorSelector
+        major={major}
+        setMajor={setMajor}
+        minor={minor}
+        setMinor={setMinor}
+        setSelectedMinorCourses={setSelectedMinorCourses}
+      />
 
       {/* Main Content: Tabs and Schedule */}
       <div className="w-full flex flex-col md:flex-row md:space-x-8">
         {/* Left Side: Tabs and Content */}
         <div className="w-full md:w-1/2 space-y-4">
-          {/* Tabs */}
-          <div className="flex border-b overflow-x-auto">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 -mb-px whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'border-indigo-600 text-indigo-600 border-b-2'
-                    : 'text-gray-600 hover:text-indigo-600'
-                }`}
-              >
-                {tab.title}
-              </button>
-            ))}
-          </div>
-          {/* Tab Content */}
-          <div className="mt-4">{renderTabContent()}</div>
+          <CourseTabs
+            major={major}
+            csSelections={csSelections}
+            setCSSelections={setCSSelections}
+            updateSelectedCourses={updateSelectedCourses}
+            handleMathCoursesSelect={handleMathCoursesSelect}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
+
           {/* Generate Plan Button */}
-          <div className="mt-4">
-            <button
-              onClick={handleUpdatePlan}
-              className="w-full px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-500 transition"
-              disabled={generatingPlan}
-            >
-              {generatingPlan ? 'Generating Plan...' : 'Generate Plan'}
-            </button>
-            {planError && (
-              <p className="mt-2 text-red-500">{planError}</p>
-            )}
-          </div>
+          <GeneratePlanButton
+            onClick={handleUpdatePlan}
+            generating={generatingPlan}
+            error={planError}
+          />
         </div>
 
         {/* Right side: Schedule */}
-        <div className="w-full bg-gradient-to-r from-pastel-pink via-pastel-purple to-pastel-blue p-6 rounded-lg shadow-lg overflow-y-auto max-h-screen">
-          <h3 className="text-xl font-bold text-gray-800 mb-6">
-            Generated Schedule
-          </h3>
-          {plan ? (
-            <>
-              <div className="grid grid-cols-4 gap-6">
-                {plan.map((semester, index) => (
-                  <div
-                    key={index}
-                    className="bg-white border border-gray-300 rounded-md shadow-md p-4 text-center hover:shadow-lg transition-shadow"
-                  >
-                    <h4 className="font-bold text-lg text-gray-700 underline mb-2">
-                      Semester {index + 1}
-                    </h4>
-                    {semester.length > 0 ? (
-                      <div className="space-y-2">
-                        {semester.map((course, courseIndex) => (
-                          <div
-                            key={courseIndex}
-                            className={`
-                              px-2 py-1 rounded-md text-gray-800 font-medium ${
-                                highlightedCourses.has(course) ? 'bg-green-200' : ''
-                              }`}
-                          >
-                            {course}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-gray-500">No courses assigned.</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {/* Credit Hours Remaining */}
-              <div className="mt-6">
-                <p className="text-lg font-semibold text-gray-900">
-                  Credit Hours Remaining: {creditHoursRemaining}
-                </p>
-              </div>
-            </>
-          ) : (
-            <p className="text-gray-600 mt-4">Select courses to generate your academic plan.</p>
-          )}
-        </div>
+        <ScheduleDisplay
+          plan={plan}
+          highlightedCourses={highlightedCourses}
+          creditHoursRemaining={creditHoursRemaining}
+        />
       </div>
     </div>
   );
