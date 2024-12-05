@@ -123,7 +123,7 @@ const ScienceTab: React.FC<ScienceTabProps> = ({ onSelect, selectedCourses }) =>
           const isSelected = selectedCourses.includes(course.code);
           const disabled =
             !isSelected &&
-            (isSelectionLimitReached || (lab && !prereqsMet));
+            (isSelectionLimitReached && !prereqsMet);
           const tooltip =
             lab && !prereqsMet
               ? `Requires prerequisites: ${getPrerequisites(course).join(', ')}`
