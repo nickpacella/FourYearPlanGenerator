@@ -61,35 +61,27 @@ const ScienceTab: React.FC<ScienceTabProps> = ({ onSelect, selectedCourses }) =>
     const isSelected = selectedCourses.includes(course.code);
     console.log(`${isSelected ? 'Deselecting' : 'Selecting'} course: ${course.code}`);
 
-    if (isSelected) {
-      // Deselect the course
-      const updatedSelectedCourses = selectedCourses.filter((code) => code !== course.code);
-      console.log('Updated selected courses after deselection:', updatedSelectedCourses);
-      onSelect(updatedSelectedCourses);
-      setSelectionError(null); // Clear any existing errors
-    } else {
-      // Check if selection limit is reached
-      if (selectedCourses.length >= 4) {
-        setSelectionError('You can only select up to 4 Science courses (12 credit hours).');
-        console.log('Selection limit reached.');
-        return;
-      }
+    const updatedSelectedCourses = isSelected
+      ? selectedCourses.filter((code) => code !== course.code)
+      : [...selectedCourses, course.code];
 
-      // If the course is a lab, ensure prerequisites are met
-      if (isLab(course.code) && !prerequisitesMet(course)) {
-        setSelectionError(
-          `Cannot select ${course.code}. Prerequisites not met: ${getPrerequisites(course).join(', ')}.`
-        );
-        console.log(`Prerequisites not met for ${course.code}:`, getPrerequisites(course));
-        return;
-      }
-
-      // Select the course
-      const updatedSelectedCourses = [...selectedCourses, course.code];
-      console.log('Updated selected courses after selection:', updatedSelectedCourses);
-      onSelect(updatedSelectedCourses);
-      setSelectionError(null); // Clear any existing errors
+    if (!isSelected && selectedCourses.length >= 4) {
+      setSelectionError('You can only select up to 4 Science courses (12 credit hours).');
+      console.log('Selection limit reached.');
+      return;
     }
+
+    if (!isSelected && isLab(course.code) && !prerequisitesMet(course)) {
+      setSelectionError(
+        `Cannot select ${course.code}. Prerequisites not met: ${getPrerequisites(course).join(', ')}.`
+      );
+      console.log(`Prerequisites not met for ${course.code}:`, getPrerequisites(course));
+      return;
+    }
+
+    console.log('Updated selected courses:', updatedSelectedCourses);
+    onSelect(updatedSelectedCourses);
+    setSelectionError(null); // Clear any existing errors
   };
 
   // Disable unchecked checkboxes if selection limit is reached
