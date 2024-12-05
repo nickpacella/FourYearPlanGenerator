@@ -200,10 +200,16 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
           newPlan.push([]);
         }
 
-        // Add the minor courses to the 8th semester
-        if (selectedMinorCourses.length > 0) {
-          newPlan[7] = [...newPlan[7], ...selectedMinorCourses]; // Push minor courses into semester 8
-        }
+        // Split the minor courses between the 7th and 8th semesters
+if (selectedMinorCourses.length > 0) {
+  const half = Math.ceil(selectedMinorCourses.length / 2);
+  const firstHalf = selectedMinorCourses.slice(0, half);
+  const secondHalf = selectedMinorCourses.slice(half);
+
+  newPlan[6] = [...(newPlan[6] || []), ...firstHalf]; // Add first half to the 7th semester
+  newPlan[7] = [...(newPlan[7] || []), ...secondHalf]; // Add second half to the 8th semester
+}
+
 
         setHighlightedCourses(new Set(selectedCourses));
         setPlan(newPlan);
