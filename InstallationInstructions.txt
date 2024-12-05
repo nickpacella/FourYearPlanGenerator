@@ -1,0 +1,6 @@
+INSTALLATION INSTRUCTIONS
+
+In the terminal, run "npm i"
+Then run "npm run dev"
+
+The project should open on your local host. Enjoy!
