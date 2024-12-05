@@ -241,13 +241,14 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
     console.log('Reconstructing state from electives...');
     console.log(scheduleId);
     if (scheduleId === undefined) {
-      console.log('skipped');
-    } else { if (electives && electives.length > 0 && allCourses.length > 0) {
+      console.log('');
+    } 
+    if (electives && electives.length > 0 && allCourses.length > 0) {
       const reconstructedSelections = { ...defaultCsSelections };
   
       electives.forEach((courseCode: string) => {
         // Hardcoded mappings for specific courses
-        const hardcodedTechnicalElectives = ['ECE 2100', 'ME 2200', 'BME 2300', 'MATH 3200', 'CS 3400'];
+        const hardcodedTechnicalElectives = ['ECE 2100', 'ME 2200', 'BME 2300', 'MATH 3200', 'CS 3400','CMA 1500', 'CMA 1600',];
         const hardcodedOpenElectives = ['ART 2100', 'MUSC 2200', 'LANG 2300', 'COMM 2400', 'ECON 2500'];
         const hardcodedMath = ['MATH 2410', 'MATH 2160', 'MATH 2810', 'MATH 2820', 'MATH 3640'];
 
@@ -308,11 +309,8 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   
       // Update selected courses to reflect the reconstructed state
       setSelectedCourses(electives);
-    } else {
-      console.log('skipped!');
     }
-  }
-}, [
+  }, [
     electives,
     allCourses,
     courseCategoryMap,

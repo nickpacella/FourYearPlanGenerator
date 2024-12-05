@@ -12,6 +12,8 @@ const mockOpenElectives = [
   'LANG 2300',
   'COMM 2400',
   'ECON 2500',
+  'CMA 1500',
+  'CMA 1600',
 ];
 
 const OpenElectivesTab: React.FC<OpenElectivesTabProps> = ({ onSelect, selectedCourses }) => {
