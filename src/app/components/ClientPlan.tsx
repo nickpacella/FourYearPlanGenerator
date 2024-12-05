@@ -142,18 +142,25 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
         ...selections.csProjectCourse,
         ...selections.technicalElectives,
         ...selections.openElectives,
-        ...selections.computersAndEthicsCourse,
-        ...selections.writingComponentCourse,
         ...selectedMinorCourses, // Include minor courses
       ];
+  
+      console.log('updateSelectedCourses - All selected courses:', allSelectedCourses);
+  
       setSelectedCourses(allSelectedCourses);
-
+  
       if (!isReconstructing.current) {
+        console.log('updateSelectedCourses - Setting electives:', allSelectedCourses);
         setElectives(allSelectedCourses); // Pass electives back to parent
+        console.log('updateSelectedCourses - Setting electives:', allSelectedCourses);
+
+      } else {
+        console.log('updateSelectedCourses - Skipped setting electives due to reconstruction');
       }
     },
     [selectedMinorCourses, setElectives]
   );
+  
 
   const handleMathCoursesSelect = useCallback(
     (courses: string[]) => {
@@ -231,53 +238,87 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
   }, [scheduleId, selectedCourses, plan, generatingPlan, generatePlan]);
 
   useEffect(() => {
-    if (electives && electives.length > 0 && allCourses.length > 0) {
-      isReconstructing.current = true; // Set the flag
-
-      // Reconstruct csSelections
+    console.log('Reconstructing state from electives...');
+    console.log(scheduleId);
+    if (scheduleId === undefined) {
+      console.log('skipped');
+    } else { if (electives && electives.length > 0 && allCourses.length > 0) {
       const reconstructedSelections = { ...defaultCsSelections };
+  
       electives.forEach((courseCode: string) => {
+        // Hardcoded mappings for specific courses
+        const hardcodedTechnicalElectives = ['ECE 2100', 'ME 2200', 'BME 2300', 'MATH 3200', 'CS 3400'];
+        const hardcodedOpenElectives = ['ART 2100', 'MUSC 2200', 'LANG 2300', 'COMM 2400', 'ECON 2500'];
+        const hardcodedMath = ['MATH 2410', 'MATH 2160', 'MATH 2810', 'MATH 2820', 'MATH 3640'];
+
+
+        if (hardcodedTechnicalElectives.includes(courseCode)) {
+          if (!reconstructedSelections['technicalElectives'].includes(courseCode)) {
+            reconstructedSelections['technicalElectives'].push(courseCode);
+          }
+          return; // Skip further processing for this course
+        }
+      
+        if (hardcodedOpenElectives.includes(courseCode)) {
+          if (!reconstructedSelections['openElectives'].includes(courseCode)) {
+            reconstructedSelections['openElectives'].push(courseCode);
+          }
+          return; // Skip further processing for this course
+        }
+
+        if (hardcodedMath.includes(courseCode)) {
+          if (!reconstructedSelections['mathCourses'].includes(courseCode)) {
+            reconstructedSelections['mathCourses'].push(courseCode);
+          }
+          return; // Skip further processing for this course
+        }
+      
+        // Process categories dynamically for all other courses
         const categories = courseCategoryMap[courseCode];
         if (categories && categories.length > 0) {
           categories.forEach((category) => {
             const selectionKey = categoryToSelectionKey[category];
-            if (
-              selectionKey &&
-              reconstructedSelections[selectionKey]
-            ) {
-              if (
-                !reconstructedSelections[selectionKey].includes(
-                  courseCode
-                )
-              ) {
+            if (selectionKey && reconstructedSelections[selectionKey]) {
+              if (!reconstructedSelections[selectionKey].includes(courseCode)) {
                 reconstructedSelections[selectionKey].push(courseCode);
               }
             } else {
-              console.warn(
-                `Unknown category '${category}' for course ${courseCode}`
-              );
+              console.warn(`Unknown category '${category}' for course ${courseCode}`);
             }
           });
         } else {
-          console.warn(
-            `No categories found for course ${courseCode}`
-          );
+          console.warn(`No categories found for course ${courseCode}`);
         }
       });
-      isReconstructing.current = true; // Set flag to prevent setElectives
-
-      setCSSelections(reconstructedSelections);
-      updateSelectedCourses(reconstructedSelections);
-
-      isReconstructing.current = false; // Reset the flag
+      
+  
+      setCSSelections((prevSelections) => {
+        const mergedSelections = { ...prevSelections };
+  
+        Object.keys(reconstructedSelections).forEach((key) => {
+          const keyAsAny = key as keyof typeof reconstructedSelections;
+          mergedSelections[keyAsAny] = Array.from(
+            new Set([...reconstructedSelections[keyAsAny], ...(prevSelections[keyAsAny] || [])])
+          );
+        });
+  
+        console.log('Final merged selections:', mergedSelections);
+        return mergedSelections;
+      });
+  
+      // Update selected courses to reflect the reconstructed state
+      setSelectedCourses(electives);
+    } else {
+      console.log('skipped!');
     }
-  }, [
+  }
+}, [
     electives,
     allCourses,
     courseCategoryMap,
     categoryToSelectionKey,
-    updateSelectedCourses,
   ]);
+  
 
   // Handler for the Update Plan button
   const handleUpdatePlan = async () => {
@@ -370,15 +411,16 @@ const ClientPlan: React.FC<ClientPlanProps> = ({
       <div className="w-full flex flex-col md:flex-row md:space-x-8">
         {/* Left Side: Tabs and Content */}
         <div className="w-full md:w-1/2 space-y-4">
-          <CourseTabs
-            major={major}
-            csSelections={csSelections}
-            setCSSelections={setCSSelections}
-            updateSelectedCourses={updateSelectedCourses}
-            handleMathCoursesSelect={handleMathCoursesSelect}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-          />
+        <CourseTabs
+  major={major}
+  csSelections={csSelections}
+  setCSSelections={setCSSelections}
+  updateSelectedCourses={updateSelectedCourses}
+  handleMathCoursesSelect={handleMathCoursesSelect}
+  activeTab={activeTab}
+  setActiveTab={setActiveTab}
+/>
+
 
           {/* Generate Plan Button */}
           <GeneratePlanButton

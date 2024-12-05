@@ -39,7 +39,9 @@ export async function POST(request: Request) {
     // Find the selected major
     const selectedMajor = majors.find(
       (m) => m.name.toLowerCase() === major.toLowerCase()
+
     );
+    console.log('ew');
 
     if (!selectedMajor) {
       return NextResponse.json(

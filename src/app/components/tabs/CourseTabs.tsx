@@ -51,17 +51,15 @@ const CourseTabs: React.FC<CourseTabsProps> = ({
           title: 'Science',
           content: (
             <ScienceTab
-
-  onSelect={(courses) => {
-    setCSSelections((prevSelections) => {
-      const newSelections = { ...prevSelections, scienceCourses: courses };
-      updateSelectedCourses(newSelections);
-      return newSelections;
-    });
-  }}
-  selectedCourses={csSelections.scienceCourses}
-/>
-
+              onSelect={(courses) => {
+                setCSSelections((prevSelections) => {
+                  const newSelections = { ...prevSelections, scienceCourses: courses };
+                  updateSelectedCourses(newSelections);
+                  return newSelections;
+                });
+              }}
+              selectedCourses={csSelections.scienceCourses}
+            />
           ),
         },
         {
@@ -70,13 +68,10 @@ const CourseTabs: React.FC<CourseTabsProps> = ({
           content: (
             <CSProjectTab
               onSelect={(courses) => {
-                setCSSelections((prev) => ({
-                  ...prev,
-                  csProjectCourse: courses,
-                }));
-                updateSelectedCourses({
-                  ...csSelections,
-                  csProjectCourse: courses,
+                setCSSelections((prevSelections) => {
+                  const newSelections = { ...prevSelections, csProjectCourse: courses };
+                  updateSelectedCourses(newSelections);
+                  return newSelections;
                 });
               }}
               selectedCourses={csSelections.csProjectCourse}
@@ -89,12 +84,11 @@ const CourseTabs: React.FC<CourseTabsProps> = ({
           content: (
             <TechnicalElectivesTab
               onSelect={(courses) => {
-                const newSelections = {
-                  ...csSelections,
-                  technicalElectives: courses,
-                };
-                setCSSelections(newSelections);
-                updateSelectedCourses(newSelections);
+                setCSSelections((prevSelections) => {
+                  const newSelections = { ...prevSelections, technicalElectives: courses };
+                  updateSelectedCourses(newSelections);
+                  return newSelections;
+                });
               }}
               selectedCourses={csSelections.technicalElectives}
             />
@@ -106,12 +100,11 @@ const CourseTabs: React.FC<CourseTabsProps> = ({
           content: (
             <OpenElectivesTab
               onSelect={(courses) => {
-                const newSelections = {
-                  ...csSelections,
-                  openElectives: courses,
-                };
-                setCSSelections(newSelections);
-                updateSelectedCourses(newSelections);
+                setCSSelections((prevSelections) => {
+                  const newSelections = { ...prevSelections, openElectives: courses };
+                  updateSelectedCourses(newSelections);
+                  return newSelections;
+                });
               }}
               selectedCourses={csSelections.openElectives}
             />
@@ -136,9 +129,9 @@ const CourseTabs: React.FC<CourseTabsProps> = ({
           content: (
             <ScienceTab
               onSelect={(courses) => {
-                setCSSelections((prev) => {
-                  const newSelections = { ...prev, scienceCourses: courses };
-                  updateSelectedCourses(newSelections);
+                setCSSelections((prevSelections) => {
+                  const newSelections = { ...prevSelections, scienceCourses: courses };
+                  updateSelectedCourses(prevSelections);
                   return newSelections;
                 });
               }}
@@ -152,13 +145,10 @@ const CourseTabs: React.FC<CourseTabsProps> = ({
           content: (
             <CSProjectTab
               onSelect={(courses) => {
-                setCSSelections((prev) => ({
-                  ...prev,
-                  csProjectCourse: courses,
-                }));
-                updateSelectedCourses({
-                  ...csSelections,
-                  csProjectCourse: courses,
+                setCSSelections((prevSelections) => {
+                  const newSelections = { ...prevSelections, csProjectCourse: courses };
+                  updateSelectedCourses(newSelections);
+                  return newSelections;
                 });
               }}
               selectedCourses={csSelections.csProjectCourse}
@@ -171,12 +161,11 @@ const CourseTabs: React.FC<CourseTabsProps> = ({
           content: (
             <TechnicalElectivesTab
               onSelect={(courses) => {
-                const newSelections = {
-                  ...csSelections,
-                  technicalElectives: courses,
-                };
-                setCSSelections(newSelections);
-                updateSelectedCourses(newSelections);
+                setCSSelections((prevSelections) => {
+                  const newSelections = { ...prevSelections, technicalElectives: courses };
+                  updateSelectedCourses(newSelections);
+                  return newSelections;
+                });
               }}
               selectedCourses={csSelections.technicalElectives}
             />
@@ -188,12 +177,11 @@ const CourseTabs: React.FC<CourseTabsProps> = ({
           content: (
             <OpenElectivesTab
               onSelect={(courses) => {
-                const newSelections = {
-                  ...csSelections,
-                  openElectives: courses,
-                };
-                setCSSelections(newSelections);
-                updateSelectedCourses(newSelections);
+                setCSSelections((prevSelections) => {
+                  const newSelections = { ...prevSelections, openElectives: courses };
+                  updateSelectedCourses(newSelections);
+                  return newSelections;
+                });
               }}
               selectedCourses={csSelections.openElectives}
             />
